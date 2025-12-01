@@ -1,5 +1,23 @@
 """Rules to standardise files."""
 
+
+rule prepare_landmass:
+    message:
+        "Preparing landmass data."
+    input:
+        raw_folder=rules.unzip_landmass.output.folder,
+    output:
+        landmass="resources/automatic/landmass.parquet",
+        fig="resources/automatic/landmass.png"
+    log:
+        "logs/prepare_landmass.log",
+    conda:
+        "../envs/euro_gas_grid.yaml"
+    script:
+        "../scripts/prepare_landmass.py"
+
+
+
 rule prepare_pipelines:
     message:
         "Validating SciGRID data."

@@ -6,6 +6,16 @@ from pandera.typing.geopandas import GeoSeries
 
 ISO3_RE = r"^[A-Z]{3}$"
 
+class LandSchema(pa.DataFrameModel):
+    class Config:
+        coerce = True
+        strict = "filter"
+
+    feature_class: Series[str] = pa.Field(eq="Land")
+    "Must be 'Land'."
+    geometry: GeoSeries
+    "Land polygons."
+
 class PipelineSchema(pa.DataFrameModel):
     class Config:
         coerce = True
