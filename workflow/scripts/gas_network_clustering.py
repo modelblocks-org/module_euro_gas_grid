@@ -3,10 +3,8 @@
 TODO: should keep incomming connections too!
 """
 
-import io
 import json
 import sys
-import zipfile
 from typing import TYPE_CHECKING, Any
 
 import geopandas as gpd
@@ -24,14 +22,7 @@ MAXIMUM_THEORETICAL_H2_SHARE = 0.88  # 88% of original capacity
 
 def read_clean_scigrid(file_path):
     # File inside the zip that you want to extract and read
-    geojson_file_path = "gas_grid/data/IGGINL_PipeSegments.geojson"
-
-    # Open the zip file
-    with zipfile.ZipFile(file_path, "r") as z:
-        # Extract the specific file
-        with z.open(geojson_file_path) as geojson_file:
-            # Read the geojson file into a GeoDataFrame
-            gas_pipelines = gpd.read_file(io.BytesIO(geojson_file.read()))
+    gas_pipelines = gpd.read_file(file_path)
 
     param_cols = [
         "diameter_mm",
@@ -92,7 +83,7 @@ def read_and_concat_offshore_pipes(offshore_path, onshore_df):
     return pd.concat([onshore_df, offshore_df])
 
 
-def cluster_onshore_pipes(grid_path, connection_path, offshore_path):
+def cluster_onshore_pipes(grid_path, connection_path):
     gas_pipelines = read_clean_scigrid(grid_path)
     connection_regions = gpd.read_file(connection_path)
 
@@ -240,12 +231,8 @@ def aggregate_parallel_pipes(gas_pipelines):
     ]
 
 
-def create_sections_clustered_gas_pipes(
-    path_to_scigrid, path_to_regions, path_to_offshore, path_to_output
-):
-    gas_pipelines = cluster_onshore_pipes(
-        path_to_scigrid, path_to_regions, path_to_offshore
-    )
+def create_sections_clustered_gas_pipes(pipes_file, shapes_file, output_file):
+    gas_pipelines = cluster_onshore_pipes(pipes_file, shapes_file)
 
     pipes = pipe_sectioning(gas_pipelines)
 
@@ -268,14 +255,12 @@ def create_sections_clustered_gas_pipes(
 
     gdf = gpd.GeoDataFrame(df.reset_index()[columns])
     gdf["energy_cap_unit"] = "MW"
-    gdf.to_file(path_to_output)
+    gdf.to_file(output_file)
 
 
-# %%
 if __name__ == "__main__":
     create_sections_clustered_gas_pipes(
-        path_to_scigrid=snakemake.input.scigrid,
-        path_to_regions=snakemake.input.regions,
-        path_to_offshore=snakemake.input.offshore_grid,
-        path_to_output=snakemake.output[0],
+        pipes_file=snakemake.input.scigrid,
+        shapes_file=snakemake.input.regions,
+        output_file=snakemake.output.cluster,
     )

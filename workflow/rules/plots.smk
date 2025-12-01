@@ -1,13 +1,13 @@
 rule visualize_output:
-    message: "generting plots for pipe clusters and salt cavern potentials {wildcards.resolution} resolution"
+    message: "generting plots for pipe clusters and salt cavern potentials {wildcards.shapes} resolution"
     input:
-        regions = "resources/user/shapes_{resolution}.geojson",
-        salt_cavern = rules.cluster_salt_cavern_potentials.output[0],
+        regions = "resources/user/{shapes}/shapes.geojson",
+        salt_cavern = rules.cluster_salt_cavern_potentials.output.clusters,
         salt_cavern_potential = rules.cluster_salt_cavern_potentials.input.salt_cavern_potentials,
-        pipe_clusters = rules.cluster_gas_network.output[0],
+        pipe_clusters = rules.cluster_gas_network.output.clusters,
     output:
-        salt_cavern = "results/figs/{resolution}/salt_cavern.svg",
-        pipe_clusters = "results/figs/{resolution}/pipes.svg",
+        salt_cavern = "results/figs/{shapes}/salt_cavern.svg",
+        pipe_clusters = "results/figs/{shapes}/pipes.svg",
     params:
         plot_configs = config["plots"]
     conda: "../envs/plots.yaml"

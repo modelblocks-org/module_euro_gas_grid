@@ -1,6 +1,17 @@
+"""Cluster salt cavern storage to shapes.
+
+TODO: should keep incomming connections too!
+"""
+
+import sys
+from typing import TYPE_CHECKING, Any
 
 import geopandas as gpd
 import pandas as pd
+
+if TYPE_CHECKING:
+    snakemake: Any
+sys.stderr = open(snakemake.log[0], "w")
 
 STORAGE_CAP = "storage_cap"
 
@@ -37,31 +48,31 @@ def calculate_salt_cavern_potential(
     if "id" not in regions:
         regions["id"] = regions.country_code
 
-    potentials["area_caverns"]= potentials.area.div(1e6) 
+    potentials["area_caverns"]= potentials.area.div(1e6)
 
     # onshore potentail is filtered by taking the intersection of regions and potentials
     onshore_potential = gpd.overlay(
-        regions.reset_index(), 
-        potentials, 
-        keep_geom_type=True, 
+        regions.reset_index(),
+        potentials,
+        keep_geom_type=True,
         how='intersection'
         )
 
-    onshore_potential["area_intersect"] = onshore_potential.area.div(1e6) 
+    onshore_potential["area_intersect"] = onshore_potential.area.div(1e6)
 
     # offshore potentail is filtered by taking the differences of regions and potential
     offshore_potential = gpd.overlay(
         potentials,
-        regions.reset_index(), 
-        keep_geom_type=True, 
-        how='difference'    
+        regions.reset_index(),
+        keep_geom_type=True,
+        how='difference'
     )
 
     offshore_potential["id"] = get_closest_region(offshore_potential,regions)
 
 
     onshore_potential["share"] = onshore_potential["area_intersect"]/ onshore_potential["area_caverns"]
-    
+
 
     onshore_potential[STORAGE_CAP] = estimate_capacity(
         capacity_per_area = onshore_potential.capacity_per_area,
@@ -77,7 +88,7 @@ def calculate_salt_cavern_potential(
 
     onshore_potential = aggregate_regions(onshore_potential,{"area_intersect": 'sum',"share": 'sum',STORAGE_CAP: 'sum',})
     offshore_potential = aggregate_regions(offshore_potential,{STORAGE_CAP: 'sum',})
-   
+
     df_onshore = regions.merge(onshore_potential,on="id")
     df_offshore = regions.merge(offshore_potential,on="id")
 
@@ -96,4 +107,4 @@ if __name__ == "__main__":
         regions_path = snakemake.input.regions,
         output_path = snakemake.output[0],
     )
-# %%
+
