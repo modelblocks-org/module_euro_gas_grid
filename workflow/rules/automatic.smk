@@ -21,7 +21,7 @@ rule unzip_pipe_segements:
     input:
         zip_file=rules.download_sci_grid.output.zipfile,
     output:
-        pipes="resources/automatic/pipesegments.geojson",
+        pipelines="resources/automatic/pipesegments.geojson",
     log:
         "logs/automatic/unzip_pipe_segements.log",
     conda:

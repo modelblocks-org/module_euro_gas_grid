@@ -1,7 +1,7 @@
 rule cluster_gas_network:
     message: "Clustering and sectioning exisiting gas grid network for {wildcards.shapes} resolution"
     input:
-        scigrid = rules.unzip_pipe_segements.output.pipes,
+        scigrid = rules.unzip_pipe_segements.output.pipelines,
         offshore_grid = "resources/automatic/gas_grid.zip",
         regions = "resources/user/{shapes}/shapes.geojson",
     output:

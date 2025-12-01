@@ -1,0 +1,16 @@
+"""Rules to standardise files."""
+
+rule prepare_pipelines:
+    message:
+        "Validating SciGRID data."
+    input:
+        raw=rules.unzip_pipe_segements.output.pipelines,
+    output:
+        pipelines="resources/automatic/pipelines.parquet",
+        fig="resources/automatic/pipelines.png"
+    log:
+        "logs/prepare_pipelines.log",
+    conda:
+        "../envs/euro_gas_grid.yaml"
+    script:
+        "../scripts/prepare_pipelines.py"
