@@ -46,11 +46,11 @@ class PipelineSchema(pa.DataFrameModel):
     "Pipeline name."
     # start_point: GeoSeries
     # "Pipeline start point."
-    start_country_id: Series[str] = pa.Field(str_matches=ISO3_RE)
+    start_country_id: Series[str] = pa.Field(str_length=3)
     "ISO 3 code of the country in the start point."
     # end_point: GeoSeries
     # "Pipeline end point."
-    end_country_id: Series[str] = pa.Field(str_matches=ISO3_RE)
+    end_country_id: Series[str] = pa.Field(str_length=3)
     "ISO 3 code of the country in the start point."
     diameter_mm: Series[float]
     "Pipeline diameter."

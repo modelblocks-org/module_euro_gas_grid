@@ -42,7 +42,8 @@ rule prepare_pipelines:
         imputation=config["imputation"],
     input:
         raw_pipelines=rules.unzip_pipe_segements.output.pipelines,
-        landmass=rules.prepare_landmass.output.landmass
+        landmass=rules.prepare_landmass.output.landmass,
+        countries=rules.prepare_countries.output.countries
     output:
         pipelines="resources/automatic/pipelines.parquet",
         fig_offshore="resources/automatic/pipelines_offshore.png",

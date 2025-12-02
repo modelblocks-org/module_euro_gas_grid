@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 from cmap import Colormap
 from matplotlib import pyplot as plt
+from shapely.geometry import Point
 
 if TYPE_CHECKING:
     snakemake: Any
@@ -134,6 +135,39 @@ def standardise_pipelines(pipelines_file: str) -> gpd.GeoDataFrame:
     return pipes
 
 
+def fix_pipeline_country_ids(
+    pipelines_gdf: gpd.GeoDataFrame,
+    countries_file: str,
+    missing: str ="XXX",
+    start_col: str ="start_country_id",
+    end_col: str ="end_country_id",
+    id_col: str ="sovereign_id",
+):
+    """Attempt to detect country IDs for lines with 'XXX' values in them."""
+    countries_gdf = gpd.read_parquet(countries_file)
+    if pipelines_gdf.crs != countries_gdf.crs:
+        countries_gdf = countries_gdf.to_crs(pipelines_gdf.crs)
+
+    pipes = pipelines_gdf.copy()
+    countries = countries_gdf[[id_col, "geometry"]]
+
+    for col, which in [(start_col, 0), (end_col, -1)]:
+        m = pipes[col].eq(missing)
+        if not m.any():
+            continue
+
+        pts = gpd.GeoDataFrame(
+            geometry=[Point(g.coords[which]) for g in pipes.loc[m, "geometry"]],
+            index=pipes.index[m],
+            crs=pipes.crs,
+        )
+
+        matched = pts.sjoin(countries, predicate="within", how="inner")[id_col].astype(str)
+        pipes.loc[matched.index, col] = matched
+
+    return pipes
+
+
 def estimate_ch4_capacity(
     pipes: gpd.GeoDataFrame,
     inferred_mm: float | None = None,
@@ -248,12 +282,14 @@ def identify_offshore(
 def prepare_pipelines(
     pipelines_file: str,
     landmass_file: str,
+    countries_file: str,
     projected_crs: str,
     impute_params: dict,
     output_file: str,
 ):
     """Clean and validate the pipelines dataset."""
     pipes = standardise_pipelines(pipelines_file)
+    pipes = fix_pipeline_country_ids(pipes, countries_file)
     pipes = estimate_ch4_capacity(
         pipes,
         inferred_mm=impute_params.get("inferred_mm", None),
@@ -301,6 +337,7 @@ if __name__ == "__main__":
     prepare_pipelines(
         pipelines_file=snakemake.input.raw_pipelines,
         landmass_file=snakemake.input.landmass,
+        countries_file=snakemake.input.countries,
         projected_crs=snakemake.params.projected_crs,
         impute_params=snakemake.params.imputation,
         output_file=snakemake.output.pipelines,

@@ -59,7 +59,7 @@ rule unzip_natural_earth:
     input:
         zip_file=rules.download_natural_earth.output.zipfile,
     output:
-        folder=directory("resources/automatic/{nat_earth}/"),
+        folder=temp(directory("resources/automatic/{nat_earth}/")),
     log:
         "logs/automatic/unzip_natural_earth_{nat_earth}.log",
     conda:
