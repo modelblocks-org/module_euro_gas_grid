@@ -47,9 +47,9 @@ def read_and_concat_offshore_pipes(offshore_path, onshore_df):
     return pd.concat([onshore_df, offshore_df])
 
 
-def cluster_onshore_pipes(grid_path, connection_path):
-    gas_pipelines = gpd.read_parquet(grid_path)
-    connection_regions = gpd.read_file(connection_path)
+def cluster_onshore_pipes(pipelines_path, shapes_path):
+    gas_pipelines = gpd.read_parquet(pipelines_path)
+    connection_regions = gpd.read_file(shapes_path)
 
     # startpoint and endpoint mapping
 

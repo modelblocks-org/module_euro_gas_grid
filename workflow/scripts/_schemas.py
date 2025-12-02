@@ -6,6 +6,7 @@ from pandera.typing.geopandas import GeoSeries
 
 ISO3_RE = r"^[A-Z]{3}$"
 
+
 class LandSchema(pa.DataFrameModel):
     class Config:
         coerce = True
@@ -16,19 +17,21 @@ class LandSchema(pa.DataFrameModel):
     geometry: GeoSeries
     "Land polygons."
 
+
 class PipelineSchema(pa.DataFrameModel):
     class Config:
         coerce = True
         strict = "filter"
+
     name: Series[str]
     "Pipeline name."
     start_point: GeoSeries
     "Pipeline start point."
-    start_country_id: Series[str] = pa.Field(str_length=3)
+    start_country_id: Series[str] = pa.Field(str_matches=ISO3_RE)
     "ISO 3 code of the country in the start point."
     end_point: GeoSeries
     "Pipeline end point."
-    end_country_id: Series[str] = pa.Field(str_length=3)
+    end_country_id: Series[str] = pa.Field(str_matches=ISO3_RE)
     "ISO 3 code of the country in the start point."
     diameter_mm: Series[float]
     "Pipeline diameter."
@@ -45,4 +48,9 @@ class PipelineSchema(pa.DataFrameModel):
     is_offshore: Series[bool]
     "Flag offshore pipelines (outside of country landmass)."
     geometry: GeoSeries
-    "Lines."
+    "Must by lines."
+
+    @pa.check("geometry")
+    def check_geometries(cls, geom):
+        """Ensure geometries are always simple lines."""
+        return not {"LineString"} ^ set(geom.geom_type.unique())

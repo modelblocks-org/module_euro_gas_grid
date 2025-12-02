@@ -33,6 +33,7 @@ def _build_country_translator(pipes: pd.Series) -> dict[str, str]:
     converter["XX"] = "XXX"
     return converter
 
+
 def _line_midpoint_safe(geom):
     """Fallback function to get the midpoint in the line."""
     if geom is None or geom.is_empty:
@@ -80,9 +81,9 @@ def identify_offshore(
     pipes: gpd.GeoDataFrame,
     landmass_file: str,
     *,
-    n_samples: int = 100,
+    n_samples: int = 50,
     land_threshold: float = 0.5,
-    projected_crs: str = "EPSG:3857"
+    projected_crs: str = "EPSG:3857",
 ) -> gpd.GeoDataFrame:
     """Add boolean column `is_offshore` to the dataset.
 
@@ -130,10 +131,12 @@ def identify_offshore(
     return pipes
 
 
-def prepare_pipelines(pipelines_file: str, landmass_file: str, output_file: str):
+def prepare_pipelines(
+    pipelines_file: str, landmass_file: str, projected_crs: str, output_file: str
+):
     """Clean and validate the pipelines dataset."""
     pipes = standardise_pipelines(pipelines_file)
-    pipes = identify_offshore(pipes, landmass_file)
+    pipes = identify_offshore(pipes, landmass_file, projected_crs=projected_crs)
 
     pipes = _schemas.PipelineSchema.validate(pipes)
     pipes.to_parquet(output_file)
@@ -166,6 +169,7 @@ if __name__ == "__main__":
     prepare_pipelines(
         pipelines_file=snakemake.input.raw_pipelines,
         landmass_file=snakemake.input.landmass,
+        projected_crs=snakemake.params.projected_crs,
         output_file=snakemake.output.pipelines,
     )
     plot(snakemake.output.pipelines, snakemake.output.fig)

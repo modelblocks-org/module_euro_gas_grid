@@ -21,6 +21,8 @@ rule prepare_landmass:
 rule prepare_pipelines:
     message:
         "Validating SciGRID data."
+    params:
+        projected_crs=config["crs"]["projected"],
     input:
         raw_pipelines=rules.unzip_pipe_segements.output.pipelines,
         landmass=rules.prepare_landmass.output.landmass
