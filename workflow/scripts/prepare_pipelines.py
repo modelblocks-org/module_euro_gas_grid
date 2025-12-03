@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 import _schemas
 import country_converter as coco
 import geopandas as gpd
+import matplotlib as mpl
 import numpy as np
 import pandas as pd
 from cmap import Colormap
@@ -138,10 +139,10 @@ def standardise_pipelines(pipelines_file: str) -> gpd.GeoDataFrame:
 def fix_pipeline_country_ids(
     pipelines_gdf: gpd.GeoDataFrame,
     countries_file: str,
-    missing: str ="XXX",
-    start_col: str ="start_country_id",
-    end_col: str ="end_country_id",
-    id_col: str ="sovereign_id",
+    missing: str = "XXX",
+    start_col: str = "start_country_id",
+    end_col: str = "end_country_id",
+    id_col: str = "sovereign_id",
 ):
     """Attempt to detect country IDs for lines with 'XXX' values in them."""
     countries_gdf = gpd.read_parquet(countries_file)
@@ -162,7 +163,9 @@ def fix_pipeline_country_ids(
             crs=pipes.crs,
         )
 
-        matched = pts.sjoin(countries, predicate="within", how="inner")[id_col].astype(str)
+        matched = pts.sjoin(countries, predicate="within", how="inner")[id_col].astype(
+            str
+        )
         pipes.loc[matched.index, col] = matched
 
     return pipes
@@ -196,7 +199,7 @@ def estimate_ch4_capacity(
     pipes["ch4_capacity_mw"] = pipes["max_cap_M_m3_per_d"] * conversion_factor
 
     # Handle inferred diameters
-    inferred_mask = pipes["diameter_method"].eq("Median(max_cap_M_m3_per_d)")
+    inferred_mask = pipes["diameter_method"].ne("raw")
     if inferred_mm is not None:
         pipes.loc[inferred_mask, "diameter_mm"] = inferred_mm
         pipes.loc[inferred_mask, "diameter_method"] = "Module recalculation"
@@ -300,36 +303,85 @@ def prepare_pipelines(
     pipes.to_parquet(output_file)
 
 
-def plot_offshore(pipes_file: str, output_file: str):
-    """Plot pipelines, identifying 'unknown' segments."""
-    pipes = gpd.read_parquet(pipes_file)
-    # Unknown in either endpoint
+def _bounds_with_padding(bounds, pad_frac=0.05):
+    minx, miny, maxx, maxy = bounds
+    dx, dy = (maxx - minx), (maxy - miny)
+    pad = pad_frac * max(dx, dy) if max(dx, dy) > 0 else 0.1
+    return (minx - pad, maxx + pad), (miny - pad, maxy + pad)
+
+
+def _style_map(ax, xlim, ylim, title):
+    ax.set_xlim(*xlim)
+    ax.set_ylim(*ylim)
+    ax.set_aspect("equal", adjustable="datalim", anchor="C")
+    ax.set_title(title)
+
+    ax.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
+    ax.xaxis.get_offset_text().set_visible(False)
+    ax.yaxis.get_offset_text().set_visible(False)
+
+
+def _plot_density(ax, values, title):
+    values.plot.density(ax=ax)
+    ax.set_xlim(values.min(), values.max())
+    ax.tick_params(left=False, labelleft=False)
+    ax.set_title(title)
+
+
+def plot(
+    pipes_file: str, countries_file: str, output_file: str, *, crs: str = "EPSG:3857"
+):
+    """Plot general information of the harmonised pipelines dataset.
+
+    - pipelines offshore/onshore map
+    - pipeline capacity map
+    - density kernels:
+        - pipeline diameter
+        - pipeline capacity
+    """
+    pipes = gpd.read_parquet(pipes_file).to_crs(crs)
+    countries = gpd.read_parquet(countries_file).to_crs(crs)
+
+    fig, axes = plt.subplot_mosaic(
+        [["ul", "ur", "cb"], ["bl", "br", "."]],
+        figsize=(10, 10),
+        gridspec_kw={"width_ratios": [1, 1, 0.06], "height_ratios": [7, 3]},
+        layout="constrained",
+    )
+
+    xlim, ylim = _bounds_with_padding(pipes.total_bounds, pad_frac=0.05)
+    countries_view = countries.cx[xlim[0] : xlim[1], ylim[0] : ylim[1]]
+
+    # land/offshore map
+    ul = axes["ul"]
+    countries_view.boundary.plot(ax=ul, color="black", lw=0.5, zorder=-1)
     offshore = pipes["is_offshore"]
+    pipes.loc[~offshore].plot(ax=ul, color="tab:brown", lw=0.6, label="onshore")
+    pipes.loc[offshore].plot(ax=ul, color="tab:blue", lw=1.0, label="offshore")
+    _style_map(ul, xlim, ylim, "SciGrid gas pipelines")
+    ul.legend()
 
-    gdf_off = pipes[offshore]
-    gdf_land = pipes[~offshore]
-
-    fig, ax = plt.subplots(figsize=(6, 6), layout="constrained")
-
-    # Land first, then 'unknown' on top
-    if not gdf_land.empty:
-        gdf_land.plot(ax=ax, color="tab:brown", linewidth=0.6)
-    if not gdf_off.empty:
-        gdf_off.plot(ax=ax, color="tab:blue", linewidth=1.0)
-
-    ax.set_title("SciGrid gas pipelines")
-    ax.set_xlabel("longitude")
-    ax.set_ylabel("latitude")
-    fig.savefig(output_file, dpi=300)
-
-
-def plot_ch4_capacity(pipes_file: str, output_file: str):
-    """Plot estimated CH4 capacity."""
-    pipes = gpd.read_parquet(pipes_file)
-    fig, ax = plt.subplots(layout="constrained")
+    # capacity map
+    ur = axes["ur"]
+    title = r"$CH_4$ pipeline capacity ($MW$)"
     cmap = Colormap("bids:fake_parula").to_mpl()
-    ax = pipes.plot("ch4_capacity_mw", ax=ax, legend=True, cmap=cmap)
-    ax.set_title("$CH_4$ pipeline capacity ($MW$)")
+
+    countries_view.boundary.plot(ax=ur, color="black", lw=0.5, zorder=-1)
+    v = pipes["ch4_capacity_mw"]
+    norm = mpl.colors.Normalize(vmin=float(v.min()), vmax=float(v.max()))
+    pipes.plot("ch4_capacity_mw", ax=ur, cmap=cmap, norm=norm, lw=0.8, legend=False)
+    _style_map(ur, xlim, ylim, title)
+
+    # colorbar
+    sm = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, cax=axes["cb"])
+    cbar.set_label(title)
+
+    # density kernels
+    _plot_density(axes["bl"], pipes["diameter_mm"], r"Pipeline diameter ($mm$)")
+    _plot_density(axes["br"], pipes["ch4_capacity_mw"], title)
+
     fig.savefig(output_file, dpi=300)
 
 
@@ -342,5 +394,9 @@ if __name__ == "__main__":
         impute_params=snakemake.params.imputation,
         output_file=snakemake.output.pipelines,
     )
-    plot_offshore(snakemake.output.pipelines, snakemake.output.fig_offshore)
-    plot_ch4_capacity(snakemake.output.pipelines, snakemake.output.fig_ch4_capacity)
+    plot(
+        snakemake.output.pipelines,
+        snakemake.input.countries,
+        snakemake.output.fig,
+        crs=snakemake.params.projected_crs,
+    )

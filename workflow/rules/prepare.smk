@@ -36,7 +36,7 @@ rule prepare_countries:
 
 rule prepare_pipelines:
     message:
-        "Validating SciGRID data."
+        "Harmonising SciGRID data."
     params:
         projected_crs=config["crs"]["projected"],
         imputation=config["imputation"],
@@ -46,8 +46,7 @@ rule prepare_pipelines:
         countries=rules.prepare_countries.output.countries
     output:
         pipelines="resources/automatic/pipelines.parquet",
-        fig_offshore="resources/automatic/pipelines_offshore.png",
-        fig_ch4_capacity="resources/automatic/pipelines_ch4_capacity.png"
+        fig="resources/automatic/pipelines.png",
     log:
         "logs/prepare_pipelines.log",
     conda:
