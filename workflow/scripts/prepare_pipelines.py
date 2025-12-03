@@ -125,8 +125,6 @@ def standardise_pipelines(pipelines_file: str) -> gpd.GeoDataFrame:
         columns=method_cols
     )
     pipes = pd.concat([pipes, param, method], axis="columns")
-    # pipes["start_point"] = pipes.geometry.apply(lambda x: Point(x.coords[0]))
-    # pipes["end_point"] = pipes.geometry.apply(lambda x: Point(x.coords[-1]))
     pipes["start_country_id"] = pipes.country_code.apply(
         lambda x: country_translator[x[0]]
     )
@@ -205,7 +203,7 @@ def estimate_ch4_capacity(
     inferred_mask = pipes["diameter_method"].ne("raw")
     if inferred_mm is not None:
         pipes.loc[inferred_mask, "diameter_mm"] = inferred_mm
-        pipes.loc[inferred_mask, "diameter_method"] = "Module recalculation"
+        pipes.loc[inferred_mask, "diameter_method"] = "inferred"
 
     # Alternative estimate
     cap_diam_mw = pipes["diameter_mm"].apply(_diameter_to_capacity)
