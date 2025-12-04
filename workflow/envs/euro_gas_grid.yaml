@@ -12,3 +12,4 @@ dependencies:
   - pandera-geopandas = 0.24
   - pandera-io = 0.24
   - pyarrow = 19.0.1
+  - scipy = 1.16.3

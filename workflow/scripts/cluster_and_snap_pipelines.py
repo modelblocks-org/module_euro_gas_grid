@@ -3,11 +3,14 @@
 import sys
 from typing import TYPE_CHECKING, Any
 
+import _plots
 import _schemas
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from scipy.spatial import cKDTree
 from shapely.geometry import LineString, Point
 
@@ -266,25 +269,34 @@ def cluster_and_snap_pipelines(
     return edges_out, nodes_out
 
 
-def plot(edges_gdf: gpd.GeoDataFrame, nodes_gdf: gpd.GeoDataFrame):
+def plot(
+    pipes_file: str,
+    nodes_file: str,
+    countries_file: str,
+    *,
+    projected_crs: str = "EPSG:3857",
+) -> tuple[Figure, Axes]:
     """Plot the clustered network using saved node degrees."""
-    if edges_gdf.crs != nodes_gdf.crs:
-        nodes_gdf = nodes_gdf.to_crs(edges_gdf.crs)
+    pipes = gpd.read_parquet(pipes_file).to_crs(projected_crs)
+    nodes = gpd.read_parquet(nodes_file).to_crs(projected_crs)
+    countries = gpd.read_parquet(countries_file).to_crs(projected_crs)
 
-    joints = nodes_gdf.loc[nodes_gdf["degree"] >= 2]
-    terms = nodes_gdf.loc[nodes_gdf["degree"] == 1]
+    xlim, ylim = _plots.get_padded_bounds(pipes, pad_frac=0.05)
+    countries = countries.cx[xlim[0] : xlim[1], ylim[0] : ylim[1]]
 
-    fig, ax = plt.subplots(figsize=(10, 10))
-    edges_gdf.plot(ax=ax, linewidth=1, color="tab:blue")
-    if not joints.empty:
-        joints.plot(ax=ax, markersize=18.0, color="tab:blue", label="joints")
+    joints = nodes.loc[nodes["degree"] >= 2]
+    terms = nodes.loc[nodes["degree"] == 1]
+
+    fig, ax = plt.subplots(figsize=(8, 8), layout="constrained")
+    pipes.plot(ax=ax, linewidth=1, color="tab:blue")
+    countries.plot(ax=ax, color="black", alpha=0.2, zorder=-1)
+    countries.boundary.plot(ax=ax, color="black", lw=0.5, zorder=-1)
     if not terms.empty:
-        terms.plot(ax=ax, markersize=14.0, color="tab:orange", label="endings")
-
-    ax.set_axis_off()
-    ax.set_title("Clustered pipelines")
+        terms.plot(ax=ax, markersize=4.0, color="tab:pink", label="endings", )
+    if not joints.empty:
+        joints.plot(ax=ax, markersize=4.0, color="tab:cyan", label="joints")
+    _plots.style_map_plot(ax, xlim, ylim, "Clustered pipelines snapped to nodes.")
     ax.legend()
-    plt.show()
     return fig, ax
 
 
@@ -292,14 +304,24 @@ def main():
     """Main snakemake function."""
     sys.stderr = open(snakemake.log[0], "w")
 
-    pipeline_file = snakemake.input.pipelines
+    pipes_out_file = snakemake.output.pipelines
+    nodes_out_file = snakemake.output.nodes
+    crs = snakemake.params.projected_crs
+
     clustered_pipes, clustered_nodes = cluster_and_snap_pipelines(
-        pipeline_file,
+        snakemake.input.pipelines,
         buffer_distance=snakemake.params.buffer,
-        projected_crs=snakemake.params.projected_crs,
+        projected_crs=crs,
     )
-    clustered_pipes.to_parquet(snakemake.output.pipelines)
-    clustered_nodes.to_parquet(snakemake.output.nodes)
+    clustered_pipes.to_parquet(pipes_out_file)
+    clustered_nodes.to_parquet(nodes_out_file)
+    fig, _ = plot(
+        pipes_file=pipes_out_file,
+        nodes_file=nodes_out_file,
+        countries_file=snakemake.input.countries,
+        projected_crs=crs,
+    )
+    fig.savefig(snakemake.output.fig, dpi=300)
 
 
 if __name__ == "__main__":

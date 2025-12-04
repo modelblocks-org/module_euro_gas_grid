@@ -78,6 +78,24 @@ class PipelineSchema(pa.DataFrameModel):
         return not {"LineString"} ^ set(geom.geom_type.unique())
 
 
+class NodeSchema(pa.DataFrameModel):
+    class Config:
+        coerce = True
+        strict = True
+
+    node_id: Series[int] = pa.Field(unique=True)
+    "Individual node ID."
+    degree: Series[int] = pa.Field(gt=0)
+    "Node degrees (i.e., number of connections)."
+    geometry: GeoSeries
+    "Must be points."
+
+    @pa.check("geometry")
+    def check_geometries(cls, geom):
+        """Ensure geometries are always simple lines."""
+        return not {"Point"} ^ set(geom.geom_type.unique())
+
+
 class ShapesSchema(pa.DataFrameModel):
     """Schema for geographic shapes."""
 

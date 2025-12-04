@@ -9,6 +9,7 @@ Commit: 822a92729e6973aa3aff741d6c94f1da2c75e8b2
 import sys
 from typing import TYPE_CHECKING, Any
 
+import _plots
 import _schemas
 import country_converter as coco
 import geopandas as gpd
@@ -319,31 +320,6 @@ def prepare_pipelines(
     pipes.to_parquet(output_file)
 
 
-def _bounds_with_padding(bounds, pad_frac=0.05):
-    minx, miny, maxx, maxy = bounds
-    dx, dy = (maxx - minx), (maxy - miny)
-    pad = pad_frac * max(dx, dy) if max(dx, dy) > 0 else 0.1
-    return (minx - pad, maxx + pad), (miny - pad, maxy + pad)
-
-
-def _style_map(ax, xlim, ylim, title):
-    ax.set_xlim(*xlim)
-    ax.set_ylim(*ylim)
-    ax.set_aspect("equal", adjustable="datalim", anchor="C")
-    ax.set_title(title)
-
-    ax.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
-    ax.xaxis.get_offset_text().set_visible(False)
-    ax.yaxis.get_offset_text().set_visible(False)
-
-
-def _plot_density(ax, values, title):
-    values.plot.density(ax=ax)
-    ax.set_xlim(values.min(), values.max())
-    ax.tick_params(left=False, labelleft=False)
-    ax.set_title(title)
-
-
 def plot(
     pipes_file: str, countries_file: str, output_file: str, *, crs: str = "EPSG:3857"
 ):
@@ -365,7 +341,7 @@ def plot(
         layout="constrained",
     )
 
-    xlim, ylim = _bounds_with_padding(pipes.total_bounds, pad_frac=0.05)
+    xlim, ylim = _plots.get_padded_bounds(pipes, pad_frac=0.05)
     countries_view = countries.cx[xlim[0] : xlim[1], ylim[0] : ylim[1]]
 
     # land/offshore map
@@ -374,7 +350,7 @@ def plot(
     offshore = pipes["is_offshore"]
     pipes.loc[~offshore].plot(ax=ul, color="tab:brown", lw=0.6, label="onshore")
     pipes.loc[offshore].plot(ax=ul, color="tab:blue", lw=1.0, label="offshore")
-    _style_map(ul, xlim, ylim, "SciGrid gas pipelines")
+    _plots.style_map_plot(ul, xlim, ylim, "SciGrid gas pipelines")
     ul.legend()
 
     # capacity map
@@ -386,7 +362,7 @@ def plot(
     v = pipes["ch4_capacity_mw"]
     norm = mpl.colors.Normalize(vmin=float(v.min()), vmax=float(v.max()))
     pipes.plot("ch4_capacity_mw", ax=ur, cmap=cmap, norm=norm, lw=0.8, legend=False)
-    _style_map(ur, xlim, ylim, title)
+    _plots.style_map_plot(ur, xlim, ylim, title)
 
     # colorbar
     sm = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
@@ -395,8 +371,8 @@ def plot(
     cbar.set_label(title)
 
     # density kernels
-    _plot_density(axes["bl"], pipes["diameter_mm"], r"Pipeline diameter ($mm$)")
-    _plot_density(axes["br"], pipes["ch4_capacity_mw"], title)
+    _plots.plot_density(axes["bl"], pipes["diameter_mm"], r"Pipeline diameter ($mm$)")
+    _plots.plot_density(axes["br"], pipes["ch4_capacity_mw"], title)
 
     fig.savefig(output_file, dpi=300)
 
