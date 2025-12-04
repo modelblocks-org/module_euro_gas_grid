@@ -43,6 +43,8 @@ class PipelineSchema(pa.DataFrameModel):
         coerce = True
         strict = "filter"
 
+    pipeline_id: Series[int] = pa.Field(unique=True)
+    """Unique identifier."""
     name: Series[str]
     "Pipeline name."
     start_country_id: Series[str] = pa.Field(str_length=3)
@@ -68,7 +70,7 @@ class PipelineSchema(pa.DataFrameModel):
     is_offshore: Series[bool]
     "Flag offshore pipelines (outside of country landmass)."
     geometry: GeoSeries
-    "Must by lines."
+    "Must be lines."
 
     @pa.check("geometry")
     def check_geometries(cls, geom):

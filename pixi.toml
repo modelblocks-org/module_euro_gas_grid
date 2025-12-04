@@ -27,6 +27,8 @@ pandera-geopandas = ">=0.24.0,<0.25"
 pycountry = ">=24.6.1,<25"
 matplotlib = ">=3.10.8,<4"
 cmap = ">=0.6.2,<0.7"
+networkx = ">=3.6,<4"
+scipy = ">=1.16.3,<2"
 
 [tasks]
 test-integration = {cmd = "pytest tests/clio_test.py"}

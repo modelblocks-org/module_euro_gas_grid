@@ -106,8 +106,10 @@ def _diameter_to_capacity(pipe_diameter_mm: float) -> float:
 
 
 def standardise_pipelines(pipelines_file: str) -> gpd.GeoDataFrame:
-    """Clean the SciGrid dataset."""
+    """Fit the SciGrid dataset to our schema."""
     pipes = gpd.read_file(pipelines_file)
+    pipes = pipes.reset_index(drop=True)
+    pipes["pipeline_id"] = np.arange(len(pipes), dtype=np.int64)
     country_translator = _build_country_translator(pipes["country_code"])
     param_cols = [
         "diameter_mm",
