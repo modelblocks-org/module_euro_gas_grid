@@ -32,10 +32,10 @@ class CountriesSchema(pa.DataFrameModel):
     "Type of sovereign body."
     admin_name: Series[str]
     "Name of the administrative body."
-    admin_id: Series[str] = pa.Field(str_matches=ISO3_RE)
+    admin_id: Series[str] = pa.Field(str_length=3)
     "ISO3 code of administrative body."
     geometry: GeoSeries
-    "Landmass polygon of soberign body."
+    "Landmass polygon of sovereign body."
 
 
 class PipelineSchema(pa.DataFrameModel):
@@ -47,18 +47,17 @@ class PipelineSchema(pa.DataFrameModel):
     """Unique identifier."""
     name: Series[str]
     "Pipeline name."
-    start_country_id: Series[str] = pa.Field(str_length=3)
-    "ISO 3 code of the country in the start point."
+    etype: Series[str] = pa.Field(eq="pipeline")
+    "Element type."
     start_node_id: Series[int] | None
     "Node identifier for pipe start point."
-    end_country_id: Series[str] = pa.Field(str_length=3)
-    "ISO 3 code of the country in the start point."
     end_node_id: Series[int] | None
     "Node identifier for pipe end point."
     diameter_mm: Series[float] = pa.Field(gt=0)
     "Pipeline diameter."
     diameter_method: Series[str]
     "Diameter estimation metadata."
+    # TODO: remove, could be misleading.
     max_cap_M_m3_per_d: Series[float] = pa.Field(gt=0)
     "Max capacity estimate."
     max_cap_method: Series[str]
@@ -95,13 +94,10 @@ class NodeSchema(pa.DataFrameModel):
     "Directed graph inputs."
     out_degree: Series[int] = pa.Field(ge=0)
     "Directed graph outputs."
-    node_type: Series[str] = pa.Field(isin=["source", "sink", "connector", "junction"])
-    """Node classification.
-    - source: only outgoing
-    - sink: only incoming
-    - connector: exactly one-in / one-out
-    - junction: both in and out, and at least one side >= 2
-    """
+    e_type: Series[str] = pa.Field(
+        isin=["source", "sink", "terminal", "connection", "junction"]
+    )
+    """Type of element."""
     geometry: GeoSeries
     "Must be points."
 

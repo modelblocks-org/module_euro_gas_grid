@@ -21,7 +21,6 @@ rule prepare_countries:
         "Preparing country data."
     input:
         raw_folder="resources/automatic/countries/",
-        raw_pipelines=rules.unzip_pipe_segements.output.pipelines,
     output:
         countries="resources/automatic/countries.parquet",
         fig="resources/automatic/countries.png"

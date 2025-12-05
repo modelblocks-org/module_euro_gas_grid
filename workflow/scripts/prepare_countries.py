@@ -26,7 +26,7 @@ def plot(land_file: str, output_file: str):
     fig.savefig(output_file, dpi=300)
 
 
-def prepare_countries(raw_countries_dir: str, raw_pipes_file: str, output_file: str):
+def prepare_countries(raw_countries_dir: str, output_file: str):
     """Prepare the countries dataset.
 
     Will only be used to assign import naming if necessary.
@@ -44,19 +44,14 @@ def prepare_countries(raw_countries_dir: str, raw_pipes_file: str, output_file: 
         },
         crs=raw_countries.crs,
     )
-    pipelines = gpd.read_file(raw_pipes_file)
-    if pipelines.crs != countries.crs:
-        pipelines.to_crs(countries.crs)
-    countries = countries[countries.geometry.intersects(pipelines.geometry.union_all())]
     countries = countries.reset_index(drop=True)
-    countries["admin_id"] = coco.convert(countries["admin_name"], to="iso3")
+    countries["admin_id"] = coco.convert(countries["admin_name"], to="iso3", not_found="XXX")
     _schemas.CountriesSchema.validate(countries).to_parquet(output_file)
 
 
 if __name__ == "__main__":
     prepare_countries(
         raw_countries_dir=snakemake.input.raw_folder,
-        raw_pipes_file=snakemake.input.raw_pipelines,
         output_file=snakemake.output.countries,
     )
     plot(snakemake.output.countries, snakemake.output.fig)

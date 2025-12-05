@@ -11,14 +11,12 @@ from typing import TYPE_CHECKING, Any
 
 import _plots
 import _schemas
-import country_converter as coco
 import geopandas as gpd
 import matplotlib as mpl
 import numpy as np
 import pandas as pd
 from cmap import Colormap
 from matplotlib import pyplot as plt
-from shapely.geometry import Point
 
 if TYPE_CHECKING:
     snakemake: Any
@@ -30,24 +28,9 @@ CH4_KG_M3 = 0.668
 # Typical values for natural gas (CH4)
 # https://ocw.tudelft.nl/wp-content/uploads/Summary_table_with_heating_values_and_CO2_emissions.pdf
 CH4_HHV_MJ_PER_KG = 55
-
-
-def _build_country_translator(pipes: pd.Series) -> dict[str, str]:
-    """Build a dictionary to translate country names to ISO3."""
-    scigrid_countries: set = set()
-    for i in pipes:
-        if isinstance(i, str):
-            scigrid_countries.update([i])
-        else:
-            scigrid_countries.update(set(i))
-    # Special case
-    converter = {
-        k: coco.convert(k, to="iso3", not_found=np.nan)
-        for k in scigrid_countries
-        if k != "XX"
-    }
-    converter["XX"] = "XXX"
-    return converter
+# Destroyed underwater pipelines.
+# https://en.wikipedia.org/wiki/Nord_Stream_pipelines_sabotage
+NORDSTREAM_IDS = (6055, 6364)
 
 
 def _line_midpoint_safe(geom):
@@ -111,12 +94,11 @@ def standardise_pipelines(pipelines_file: str) -> gpd.GeoDataFrame:
     pipes = gpd.read_file(pipelines_file)
     pipes = pipes.reset_index(drop=True)
     pipes["pipeline_id"] = np.arange(len(pipes), dtype=np.int64)
-    country_translator = _build_country_translator(pipes["country_code"])
+    pipes["etype"] = "pipeline"
     param_cols = [
         "diameter_mm",
         "max_cap_M_m3_per_d",
         "is_bothDirection",
-        "length_km",
         "max_pressure_bar",
     ]
     param = pipes.param.apply(pd.Series)[param_cols]
@@ -128,55 +110,16 @@ def standardise_pipelines(pipelines_file: str) -> gpd.GeoDataFrame:
         columns=method_cols
     )
     pipes = pd.concat([pipes, param, method], axis="columns")
-    pipes["start_country_id"] = pipes.country_code.apply(
-        lambda x: country_translator[x[0]]
-    )
-    pipes["end_country_id"] = pipes.country_code.apply(
-        lambda x: country_translator[x[-1]]
-    )
-    return pipes
-
-
-def fix_pipeline_country_ids(
-    pipelines_gdf: gpd.GeoDataFrame,
-    countries_file: str,
-    missing: str = "XXX",
-    start_col: str = "start_country_id",
-    end_col: str = "end_country_id",
-    id_col: str = "sovereign_id",
-):
-    """Attempt to detect country IDs for lines with 'XXX' values in them."""
-    countries_gdf = gpd.read_parquet(countries_file)
-    if pipelines_gdf.crs != countries_gdf.crs:
-        countries_gdf = countries_gdf.to_crs(pipelines_gdf.crs)
-
-    pipes = pipelines_gdf.copy()
-    countries = countries_gdf[[id_col, "geometry"]]
-
-    for col, which in [(start_col, 0), (end_col, -1)]:
-        m = pipes[col].eq(missing)
-        if not m.any():
-            continue
-
-        pts = gpd.GeoDataFrame(
-            geometry=[Point(g.coords[which]) for g in pipes.loc[m, "geometry"]],
-            index=pipes.index[m],
-            crs=pipes.crs,
-        )
-
-        matched = pts.sjoin(countries, predicate="within", how="inner")[id_col].astype(
-            str
-        )
-        pipes.loc[matched.index, col] = matched
-
     return pipes
 
 
 def estimate_ch4_capacity(
     pipes: gpd.GeoDataFrame,
     inferred_mm: float | None = None,
+    *,
     recalculate_below_mw: float | None = None,
     capacity_correction_threshold: float = 8,
+    remove_nordstream: bool = True
 ) -> gpd.GeoDataFrame:
     """Estimate natural gas capacity for each pipeline segment.
 
@@ -191,6 +134,8 @@ def estimate_ch4_capacity(
             capacities below this will use recalculated values. Defaults to None.
         capacity_correction_threshold (int, optional):
             Ratio threshold to trigger recalculation. Defaults to 8.
+        remove_nordstream (bool, optional):
+            Drop nordstream pipelines.
 
     Returns:
         gpd.GeoDataFrame: pipeline dataframe with CH4 capacity.
@@ -208,16 +153,20 @@ def estimate_ch4_capacity(
         pipes.loc[inferred_mask, "diameter_mm"] = inferred_mm
         pipes.loc[inferred_mask, "diameter_method"] = "inferred"
 
-    # Alternative estimate
+    nordstream = pipes["pipeline_id"].isin(NORDSTREAM_IDS)
+    if remove_nordstream:
+        # Recommended option. See:
+        # https://en.wikipedia.org/wiki/Nord_Stream_pipelines_sabotage
+        pipes = pipes.loc[~nordstream]
+
+    # cap_diam_mw should match the *current* pipes
     cap_diam_mw = pipes["diameter_mm"].apply(_diameter_to_capacity)
 
-    # Nordstream pressure ranges from 170-220
-    # https://en.wikipedia.org/wiki/Nord_Stream_1#Baltic_Sea_offshore_pipeline
-    not_nordstream = pipes["max_pressure_bar"] < 170
     ratio = pipes["ch4_capacity_mw"] / cap_diam_mw
-    discrepant_mask = not_nordstream & (
-        (ratio > capacity_correction_threshold)
-        | (ratio < 1 / capacity_correction_threshold)
+    thr = capacity_correction_threshold
+    discrepant_mask = (
+        ~pipes["pipeline_id"].isin(NORDSTREAM_IDS)
+        & ((ratio > thr) | (ratio < 1 / thr))
     )
 
     # Optional: force recalculation below a threshold
@@ -302,18 +251,17 @@ def identify_offshore(
 def prepare_pipelines(
     pipelines_file: str,
     landmass_file: str,
-    countries_file: str,
     projected_crs: str,
     impute_params: dict,
     output_file: str,
 ):
     """Clean and validate the pipelines dataset."""
     pipes = standardise_pipelines(pipelines_file)
-    pipes = fix_pipeline_country_ids(pipes, countries_file)
     pipes = estimate_ch4_capacity(
         pipes,
         inferred_mm=impute_params.get("inferred_mm", None),
         recalculate_below_mw=impute_params.get("recalculate_below_mw", None),
+        remove_nordstream=impute_params["remove_nordstream"]
     )
     pipes = identify_offshore(pipes, landmass_file, projected_crs=projected_crs)
     pipes = _schemas.PipelineSchema.validate(pipes)
@@ -381,7 +329,6 @@ if __name__ == "__main__":
     prepare_pipelines(
         pipelines_file=snakemake.input.raw_pipelines,
         landmass_file=snakemake.input.landmass,
-        countries_file=snakemake.input.countries,
         projected_crs=snakemake.params.projected_crs,
         impute_params=snakemake.params.imputation,
         output_file=snakemake.output.pipelines,
