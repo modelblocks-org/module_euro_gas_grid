@@ -12,7 +12,7 @@ rule download_sci_grid:
     log:
         "logs/download_sci_grid.log",
     output:
-        zipfile=temp("resources/automatic/gas_grid.zip"),
+        zipfile="resources/automatic/gas_grid.zip",
     localrule: True,
     conda:
         "../envs/shell.yaml"
@@ -28,7 +28,7 @@ rule unzip_pipe_segements:
     input:
         zip_file=rules.download_sci_grid.output.zipfile,
     output:
-        pipelines=temp("resources/automatic/pipesegments.geojson"),
+        pipelines="resources/automatic/pipesegments.geojson",
     log:
         "logs/automatic/unzip_pipe_segements.log",
     conda:
@@ -45,21 +45,21 @@ rule download_natural_earth:
     log:
         "logs/download_{nat_earth}.log",
     output:
-        zipfile=temp("resources/automatic/{nat_earth}.zip"),
+        zipfile="resources/automatic/{nat_earth}.zip",
     localrule: True,
     conda:
         "../envs/shell.yaml"
     shell:
         """curl -sSLo {output} {params.url}"""
 
-
+# TODO: output should be the file, not a directory.
 rule unzip_natural_earth:
     message:
         "Unzipping natural earth '{wildcards.nat_earth}' data."
     input:
         zip_file=rules.download_natural_earth.output.zipfile,
     output:
-        folder=temp(directory("resources/automatic/{nat_earth}/")),
+        folder=directory("resources/automatic/{nat_earth}/"),
     log:
         "logs/automatic/unzip_natural_earth_{nat_earth}.log",
     conda:

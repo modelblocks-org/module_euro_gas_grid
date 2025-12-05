@@ -49,8 +49,12 @@ class PipelineSchema(pa.DataFrameModel):
     "Pipeline name."
     start_country_id: Series[str] = pa.Field(str_length=3)
     "ISO 3 code of the country in the start point."
+    start_node_id: Series[int] | None
+    "Node identifier for pipe start point."
     end_country_id: Series[str] = pa.Field(str_length=3)
     "ISO 3 code of the country in the start point."
+    end_node_id: Series[int] | None
+    "Node identifier for pipe end point."
     diameter_mm: Series[float] = pa.Field(gt=0)
     "Pipeline diameter."
     diameter_method: Series[str]
@@ -86,7 +90,18 @@ class NodeSchema(pa.DataFrameModel):
     node_id: Series[int] = pa.Field(unique=True)
     "Individual node ID."
     degree: Series[int] = pa.Field(gt=0)
-    "Node degrees (i.e., number of connections)."
+    "Undirected graph degrees (i.e., number of connections)."
+    in_degree: Series[int] = pa.Field(ge=0)
+    "Directed graph inputs."
+    out_degree: Series[int] = pa.Field(ge=0)
+    "Directed graph outputs."
+    node_type: Series[str] = pa.Field(isin=["source", "sink", "connector", "junction"])
+    """Node classification.
+    - source: only outgoing
+    - sink: only incoming
+    - connector: exactly one-in / one-out
+    - junction: both in and out, and at least one side >= 2
+    """
     geometry: GeoSeries
     "Must be points."
 

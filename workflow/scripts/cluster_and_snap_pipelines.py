@@ -8,6 +8,7 @@ import _schemas
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+from cmap import Colormap
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -230,12 +231,48 @@ def cluster_and_snap_pipelines(
     nodes_m = nodes_m.set_index("node_id", drop=False)
 
     # -------------------------------------------------------------------------
-    # 6) Degree per node from remaining edges (to infer joints/terminals later)
+    # 6) Degrees per node from remaining edges/pipes
     # -------------------------------------------------------------------------
+    # Undirected graph
     deg = pd.concat(
         [pipe_nodes["start_node_id"], pipe_nodes["end_node_id"]]
     ).value_counts()
     nodes_m["degree"] = nodes_m["node_id"].map(deg).fillna(0).astype(int)
+
+    # Directed graph (start -> end for every pipe)
+    s = pipe_nodes["start_node_id"].astype("int64")
+    t = pipe_nodes["end_node_id"].astype("int64")
+    # Bidirectional pipes contribute an extra reverse arc: end -> start
+    bi = pipes.loc[pipe_nodes.index, "is_bothDirection"].astype(bool)
+
+    out_deg = s.value_counts()
+    out_deg = out_deg.add(t[bi].value_counts(), fill_value=0).astype(int)
+
+    in_deg = t.value_counts()
+    in_deg = in_deg.add(s[bi].value_counts(), fill_value=0).astype(int)
+
+    nodes_m["out_degree"] = nodes_m["node_id"].map(out_deg).fillna(0).astype(int)
+    nodes_m["in_degree"] = nodes_m["node_id"].map(in_deg).fillna(0).astype(int)
+
+    # Classify nodes (failing if isolated nodes are found)
+    in_d = nodes_m["in_degree"]
+    out_d = nodes_m["out_degree"]
+    nodes_m["node_type"] = np.select(
+        [
+            (in_d == 0) & (out_d > 0),  # source
+            (out_d == 0) & (in_d > 0),  # sink
+            (in_d == 1) & (out_d == 1),  # connector
+            (in_d > 0) & (out_d > 0) & ((in_d > 1) | (out_d > 1)),  # junction
+        ],
+        ["source", "sink", "connector", "junction"],
+        default="isolated",
+    )
+    if (nodes_m["node_type"] == "isolated").any():
+        bad = nodes_m.loc[
+            nodes_m["node_type"] == "isolated",
+            ["node_id", "degree", "in_degree", "out_degree"],
+        ].head()
+        raise RuntimeError(f"Found unexpected isolated nodes:\n{bad}")
 
     # -------------------------------------------------------------------------
     # 7) Snap ONLY joint endpoints (degree >= 2) to the node representative point
@@ -285,19 +322,27 @@ def plot(
     xlim, ylim = _plots.get_padded_bounds(pipes, pad_frac=0.05)
     countries = countries.cx[xlim[0] : xlim[1], ylim[0] : ylim[1]]
 
-    joints = nodes.loc[nodes["degree"] >= 2]
-    terms = nodes.loc[nodes["degree"] == 1]
-
     fig, ax = plt.subplots(figsize=(8, 8), layout="constrained")
-    pipes.plot(ax=ax, linewidth=1, color="tab:blue")
-    countries.plot(ax=ax, color="black", alpha=0.2, zorder=-1)
+
+    # Background
+    countries.plot(ax=ax, color="black", alpha=0.2, zorder=-2)
     countries.boundary.plot(ax=ax, color="black", lw=0.5, zorder=-1)
-    if not terms.empty:
-        terms.plot(ax=ax, markersize=4.0, color="tab:pink", label="endings", )
-    if not joints.empty:
-        joints.plot(ax=ax, markersize=4.0, color="tab:cyan", label="joints")
-    _plots.style_map_plot(ax, xlim, ylim, "Clustered pipelines snapped to nodes.")
-    ax.legend()
+
+    # Pipes & Nodes
+    pipes.plot(ax=ax, linewidth=1, color="tab:blue", zorder=0)
+    if not nodes.empty:
+        cmap = Colormap("colorbrewer:Accent").to_mpl()
+        nodes.plot(
+            ax=ax,
+            column="node_type",
+            cmap=cmap,
+            categorical=True,
+            legend=True,
+            markersize=4,
+            zorder=1,
+        )
+
+    _plots.style_map_plot(ax, xlim, ylim, "Summary of snapped pipelines.")
     return fig, ax
 
 
@@ -314,8 +359,8 @@ def main():
         buffer_distance=snakemake.params.buffer,
         projected_crs=crs,
     )
-    clustered_pipes.to_parquet(pipes_out_file)
-    clustered_nodes.to_parquet(nodes_out_file)
+    _schemas.NodeSchema.validate(clustered_nodes).to_parquet(nodes_out_file)
+    _schemas.PipelineSchema.validate(clustered_pipes).to_parquet(pipes_out_file)
     fig, _ = plot(
         pipes_file=pipes_out_file,
         nodes_file=nodes_out_file,
