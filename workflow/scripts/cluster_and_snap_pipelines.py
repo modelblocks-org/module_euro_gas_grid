@@ -64,14 +64,16 @@ def _greedy_xy_clustering(xy: np.ndarray, buffer_distance: float) -> np.ndarray:
     if xy.shape[1] != 2:
         raise ValueError("xy must have shape (n, 2)")
     if buffer_distance <= 0:
-        raise ValueError("buffer_m must be > 0")
+        raise ValueError("buffer_distance must be > 0")
+
+    # Extreme-case guard: buffer >= bounding-box diagonal
+    # every pair of points is within buffer
+    dx = float(xy[:, 0].max() - xy[:, 0].min())
+    dy = float(xy[:, 1].max() - xy[:, 1].min())
+    if buffer_distance >= (dx * dx + dy * dy) ** 0.5:
+        return np.zeros(n, dtype=np.int64)
 
     tree = cKDTree(xy)
-
-    # neigh[i] = indices of points within buffer_m of i (includes i). We remove i itself.
-    neigh = tree.query_ball_point(xy, r=float(buffer_distance))
-    neigh = [set(lst) - {i} for i, lst in enumerate(neigh)]
-
     unassigned = np.ones(n, dtype=bool)
     cluster_id = np.full(n, -1, dtype=np.int64)
     cid = 0
@@ -79,33 +81,32 @@ def _greedy_xy_clustering(xy: np.ndarray, buffer_distance: float) -> np.ndarray:
     while unassigned.any():
         # Start a new cluster at the first unassigned point.
         seed = int(np.flatnonzero(unassigned)[0])
+        unassigned[seed] = False
         members = [seed]
-        unassigned[seed] = False  # commit immediately
 
-        # Initial candidates: unassigned neighbors of the seed.
-        candidates = [j for j in neigh[seed] if unassigned[j]]
+        # Initial candidates: neighbors of the seed
+        cand = tree.query_ball_point(xy[seed], r=float(buffer_distance))
+        cand = [j for j in cand if j != seed and unassigned[j]]
 
-        # Process in order: closest to the seed first.
-        candidates.sort(
-            key=lambda j: float(
-                (xy[j, 0] - xy[seed, 0]) ** 2 + (xy[j, 1] - xy[seed, 1]) ** 2
-            )
-        )
+        sx, sy = xy[seed, 0], xy[seed, 1]
+        # Deterministic ordering: (distance^2 to seed, index) for tie-breaks
+        cand.sort(key=lambda j: ((xy[j, 0] - sx) ** 2 + (xy[j, 1] - sy) ** 2, int(j)))
 
         # track points that are still within buffer of *all* chosen members.
-        allowed = set(candidates)
+        allowed = set(cand)
 
-        for cand in candidates:
-            if not unassigned[cand]:
-                continue  # already taken by this cluster (or earlier)
-            if cand not in allowed:
-                continue  # violates "close to all members" constraint
+        for j in cand:
+            if not unassigned[j]:
+                continue
+            if j not in allowed:
+                continue
 
-            members.append(cand)
-            unassigned[cand] = False
+            members.append(j)
+            unassigned[j] = False
 
-            # Tighten constraint: future members must also be neighbors of j.
-            allowed.intersection_update(neigh[cand])
+            # Tighten allowed set: future members must also be within buffer of j
+            neigh_j = tree.query_ball_point(xy[j], r=float(buffer_distance))
+            allowed.intersection_update(neigh_j)
 
         cluster_id[members] = cid
         cid += 1
@@ -259,7 +260,7 @@ def cluster_and_snap_pipelines(
     pipes["end_node_id"] = pipe_nodes["end_node_id"].astype(np.int64)
 
     # -------------------------------------------------------------------------
-    # 8) Reproject back to original CRS (ready to save)
+    # 8) Reproject back to original CRS
     # -------------------------------------------------------------------------
     edges_out = gpd.GeoDataFrame(
         pipes.to_crs(original_crs), geometry="geometry", crs=original_crs
