@@ -225,7 +225,7 @@ def match_pipes_to_nodes(
 def compute_node_attributes(
     pipes: gpd.GeoDataFrame, nodes: gpd.GeoDataFrame
 ) -> gpd.GeoDataFrame:
-    # 2. identify node graph metrics
+    """Identify graph charactersitics (both directed and undirected)."""
     u = pipes["start_node_id"]
     v = pipes["end_node_id"]
     deg = pd.concat([u, v]).value_counts()
@@ -313,7 +313,7 @@ def initialise_pipelines(pipelines_file: str) -> gpd.GeoDataFrame:
             {
                 "pipeline_id": raw.index.to_numpy(np.int64),
                 "name": raw["name"],
-                "etype": "pipeline"
+                "etype": "pipeline",
             },
             geometry=raw.geometry,
             crs=raw.crs,
@@ -464,81 +464,102 @@ def identify_offshore_pipelines(
     return pipes
 
 
-# def prepare_pipelines(
-#     pipelines_file: str,
-#     landmass_file: str,
-#     projected_crs: str,
-#     impute_params: dict,
-#     output_file: str,
-# ):
-#     """Clean and validate the pipelines dataset."""
-#     pipes = initialise_pipelines(pipelines_file)
-#     pipes = estimate_ch4_capacity(
-#         pipes,
-#         inferred_mm=impute_params.get("inferred_mm", None),
-#         recalculate_below_mw=impute_params.get("recalculate_below_mw", None),
-#         remove_nordstream=impute_params["remove_nordstream"],
-#     )
-#     pipes = identify_offshore_pipelines(pipes, landmass_file, crs=projected_crs)
-#     pipes = _schemas.PipelineSchema.validate(pipes)
-#     pipes.to_parquet(output_file)
-
-
 def plot(
-    pipes_file: str, countries_file: str, output_file: str, *, crs: str = "EPSG:3035"
+    pipes_file: str, nodes_file: str, countries_file: str, *, crs: str = "EPSG:3035"
 ):
-    """Plot general information of the harmonised pipelines dataset.
-
-    - pipelines offshore/onshore map
-    - pipeline capacity map
-    - density kernels:
-        - pipeline diameter
-        - pipeline capacity
-    """
+    """Plot general information of the harmonised datasets."""
     pipes = gpd.read_parquet(pipes_file).to_crs(crs)
+    nodes = gpd.read_parquet(nodes_file).to_crs(crs)
     countries = gpd.read_parquet(countries_file).to_crs(crs)
 
-    fig, axes = plt.subplot_mosaic(
-        [["ul", "ur", "cb"], ["bl", "br", "."]],
-        figsize=(10, 10),
-        gridspec_kw={"width_ratios": [1, 1, 0.06], "height_ratios": [7, 3]},
-        layout="constrained",
-    )
+    fig = plt.figure(figsize=(10, 10), layout="compressed")
 
-    xlim, ylim = _plots.get_padded_bounds(pipes, pad_frac=0.05)
+    # 2 rows × 3 cols, last col is the colorbar gutter.
+    gs = fig.add_gridspec(2, 3, width_ratios=(1, 1, 0.045), height_ratios=(1, 1))
+
+    # Main panels
+    ax_ul = fig.add_subplot(gs[0, 0])  # onshore/offshore
+    ax_uc = fig.add_subplot(gs[0, 1])  # capacity
+    ax_cb = fig.add_subplot(gs[0, 2])  # colorbar (only for top row)
+
+    ax_bl = fig.add_subplot(gs[1, 0])  # network properties
+
+    # Bottom-right: 3 stacked densities
+    dens_gs = gs[1, 1].subgridspec(3, 1)
+    ax_k1 = fig.add_subplot(dens_gs[0, 0])
+    ax_k2 = fig.add_subplot(dens_gs[1, 0])
+    ax_k3 = fig.add_subplot(dens_gs[2, 0])
+
+    # Keep the bottom-right gutter empty/invisible
+    ax_empty = fig.add_subplot(gs[1, 2])
+    ax_empty.axis("off")
+
+    axes = {
+        "ul": ax_ul,
+        "uc": ax_uc,
+        "bl": ax_bl,
+        "k1": ax_k1,
+        "k2": ax_k2,
+        "k3": ax_k3,
+        "cb": ax_cb,
+    }
+
+    # ---- shared view window ----
+    xlim, ylim = _plots.get_padded_bounds(pipes, pad_frac=0.02)
     countries_view = countries.cx[xlim[0] : xlim[1], ylim[0] : ylim[1]]
 
-    # land/offshore map
-    ul = axes["ul"]
-    countries_view.boundary.plot(ax=ul, color="black", lw=0.5, zorder=-1)
+    # ---- UL: onshore/offshore ----
+    title = "Onshore/offshore gas pipelines"
+    countries_view.plot(ax=ax_ul, color="black", alpha=0.05, zorder=-2)
+    countries_view.boundary.plot(ax=ax_ul, color="black", lw=0.5, zorder=-1)
     offshore = pipes["is_offshore"]
-    pipes.loc[~offshore].plot(ax=ul, color="tab:brown", lw=0.6, label="onshore")
-    pipes.loc[offshore].plot(ax=ul, color="tab:blue", lw=1.0, label="offshore")
-    _plots.style_map_plot(ul, xlim, ylim, "SciGrid gas pipelines")
-    ul.legend()
+    pipes.loc[~offshore].plot(ax=ax_ul, color="tab:brown", lw=0.6, label="onshore")
+    pipes.loc[offshore].plot(ax=ax_ul, color="tab:blue", lw=1.0, label="offshore")
+    _plots.style_map_plot(ax_ul, xlim, ylim, title)
+    ax_ul.legend(loc="upper right")
 
-    # capacity map
-    ur = axes["ur"]
+    # ---- UC: capacity + dedicated colorbar axis ----
     title = r"$CH_4$ pipeline capacity ($MW$)"
     cmap = Colormap("bids:fake_parula").to_mpl()
-
-    countries_view.boundary.plot(ax=ur, color="black", lw=0.5, zorder=-1)
     v = pipes["ch4_capacity_mw"]
     norm = mpl.colors.Normalize(vmin=float(v.min()), vmax=float(v.max()))
-    pipes.plot("ch4_capacity_mw", ax=ur, cmap=cmap, norm=norm, lw=0.8, legend=False)
-    _plots.style_map_plot(ur, xlim, ylim, title)
+    countries_view.plot(ax=ax_uc, color="black", alpha=0.05, zorder=-2)
+    countries_view.boundary.plot(ax=ax_uc, color="black", lw=0.5, zorder=-1)
+    pipes.plot("ch4_capacity_mw", ax=ax_uc, cmap=cmap, norm=norm, lw=0.8)
+    _plots.style_map_plot(ax_uc, xlim, ylim, title)
 
-    # colorbar
     sm = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
     sm.set_array([])
-    cbar = fig.colorbar(sm, cax=axes["cb"])
-    cbar.set_label(title)
+    _ = fig.colorbar(sm, cax=ax_cb)
 
-    # density kernels
-    _plots.plot_density(axes["bl"], pipes["diameter_mm"], r"Pipeline diameter ($mm$)")
-    _plots.plot_density(axes["br"], pipes["ch4_capacity_mw"], title)
+    # ---- BL: network properties ----
+    title = "Gas network properties"
+    countries_view.plot(ax=ax_bl, color="black", alpha=0.05, zorder=-2)
+    countries_view.boundary.plot(ax=ax_bl, color="black", lw=0.5, zorder=-1)
+    etypes = gpd.GeoDataFrame(
+        pd.concat([i[["etype", "geometry"]] for i in [nodes, pipes]]), crs=crs
+    )
+    cmap2 = Colormap("colorbrewer:Accent_r").to_mpl()
+    etypes.plot(
+        ax=ax_bl,
+        column="etype",
+        cmap=cmap2,
+        categorical=True,
+        markersize=3,
+        lw=0.5,
+        legend=True
+    )
+    _plots.style_map_plot(ax_bl, xlim, ylim, title)
 
-    fig.savefig(output_file, dpi=300)
+    # ---- densities ----
+    _plots.plot_density(ax_k1, pipes["diameter_mm"], r"Pipeline diameter ($mm$)")
+    _plots.plot_density(ax_k2, pipes["ch4_capacity_mw"], r"Pipeline capacity ($MW$)")
+    unit_name = pipes.crs.axis_info[0].unit_name
+    _plots.plot_density(
+        ax_k3, pipes.geometry.length, rf"Pipeline length (${unit_name}$)"
+    )
+
+    return fig, axes
 
 
 def main():
@@ -546,6 +567,7 @@ def main():
     crs = "EPSG:3035"  # ETRS89-extended / LAEA Europe
     smk_params = snakemake.params
 
+    # Transformations
     countries_file = snakemake.input.countries
     nodes = initialise_nodes(snakemake.input.raw_nodes, countries_file)
     pipes = initialise_pipelines(snakemake.input.raw_pipelines)
@@ -559,11 +581,15 @@ def main():
     )
     pipes = identify_offshore_pipelines(pipes, snakemake.input.landmass, crs=crs)
 
+    # Validation
     pipes_out_file = snakemake.output.pipelines
     nodes_out_file = snakemake.output.nodes
     _schemas.PipelineSchema.validate(pipes).to_parquet(pipes_out_file)
     _schemas.NodeSchema.validate(nodes).to_parquet(nodes_out_file)
-    plot(pipes_out_file, countries_file, snakemake.output.fig, crs=crs)
+
+    # Analysis
+    fig, _ = plot(pipes_out_file, nodes_out_file, countries_file, crs=crs)
+    fig.savefig(snakemake.output.fig, dpi=300)
 
 
 if __name__ == "__main__":
