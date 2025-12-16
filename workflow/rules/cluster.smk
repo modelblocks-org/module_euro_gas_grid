@@ -59,7 +59,7 @@ rule cluster_gas_network:
         countries = rules.prepare_countries.output.countries,
         pipelines = rules.prepare_pipelines.output.pipelines,
         nodes = rules.prepare_pipelines.output.nodes,
-        shapes = "resources/user/{shapes}/shapes.parquet",
+        shapes = rules.prepare_shapes.output.shapes,
     output:
         pipelines = "results/{shapes}/pipelines.parquet",
         nodes = "results/{shapes}/nodes.parquet",
