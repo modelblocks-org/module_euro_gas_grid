@@ -4,9 +4,11 @@ from dataclasses import dataclass
 from itertools import combinations
 from typing import Literal
 
+import _utils
 import geopandas as gpd
 import networkx as nx
 import pandas as pd
+from shapely.geometry import Point
 
 
 @dataclass(frozen=True, order=True)
@@ -38,6 +40,40 @@ def _assign_edge_region(
     return region
 
 
+def _snap_relevant_nodes(
+    pipelines: gpd.GeoDataFrame, relevant_nodes: gpd.GeoDataFrame
+) -> set[int]:
+    """Snap relevant points to the nearest pipeline connection (endpoint node_id)."""
+    start_pts = pipelines.geometry.apply(lambda g: Point(g.coords[0]))
+    end_pts = pipelines.geometry.apply(lambda g: Point(g.coords[-1]))
+
+    endpoints = pd.concat(
+        [
+            gpd.GeoDataFrame(
+                {
+                    "node_id": pipelines["start_node_id"].values,
+                    "geometry": start_pts.values,
+                },
+                crs=pipelines.crs,
+            ),
+            gpd.GeoDataFrame(
+                {
+                    "node_id": pipelines["end_node_id"].values,
+                    "geometry": end_pts.values,
+                },
+                crs=pipelines.crs,
+            ),
+        ],
+        ignore_index=True,
+    ).drop_duplicates(subset=["node_id"])
+
+    nodes = _utils.to_crs(relevant_nodes, pipelines.crs)
+    joined = gpd.sjoin_nearest(
+        nodes[["geometry"]], endpoints[["node_id", "geometry"]], how="inner"
+    )
+    return set(joined["node_id"])
+
+
 def _build_split_digraph(
     pipelines: gpd.GeoDataFrame, internal_countries: set[str]
 ) -> nx.DiGraph:
@@ -50,7 +86,9 @@ def _build_split_digraph(
     G = nx.DiGraph()
 
     # Explicitly track which nodes are "physical" (as opposed to intermediate "pipe" nodes)
-    physical_nodes = set(pipelines["start_node_id"]).union(set(pipelines["end_node_id"]))
+    physical_nodes = set(pipelines["start_node_id"]).union(
+        set(pipelines["end_node_id"])
+    )
     G.graph["physical_nodes"] = physical_nodes
 
     for row in pipelines.itertuples(index=False):
@@ -68,8 +106,8 @@ def _build_split_digraph(
         G.add_edge(mid, v, capacity=cap, region=reg)
 
         # Reverse if bidirectional
-        # NOTE: this simplification ONLY works when calculating single-max flows.
-        # Otherwise it will likely lead to duplicated capacity.
+        # NOTE: this simplification ONLY works when calculating shape-to-shape max flows.
+        # Multi-region flow calculations will likely lead to duplicated capacity!
         if bool(row.is_bidirectional):
             mid_r = ("pipe", pid, -1)
             G.add_edge(v, mid_r, capacity=cap, region=reg)
@@ -155,7 +193,15 @@ def _get_region_node_caps(
     return out_cap, in_cap
 
 
-def _estimate_max_flow(G: nx.DiGraph, out_cap, in_cap, ra: Region, rb: Region) -> float:
+def _estimate_max_flow(
+    G: nx.DiGraph,
+    out_cap,
+    in_cap,
+    ra: Region,
+    rb: Region,
+    *,
+    relevant_nodes: set[int] | None = None,
+) -> float:
     """Max flow ra -> rb allowing transit only through {ra, rb, None}-edges."""
     allowed = {None, ra, rb}
 
@@ -171,10 +217,10 @@ def _estimate_max_flow(G: nx.DiGraph, out_cap, in_cap, ra: Region, rb: Region) -
     H.add_node(t)
 
     for (n, r), cap in out_cap.items():
-        if r == ra and n in H:
+        if r == ra and n in H and (relevant_nodes is None or n in relevant_nodes):
             H.add_edge(s, n, capacity=float(cap))
     for (n, r), cap in in_cap.items():
-        if r == rb and n in H:
+        if r == rb and n in H and (relevant_nodes is None or n in relevant_nodes):
             H.add_edge(n, t, capacity=float(cap))
 
     flow, _ = nx.maximum_flow(H, s, t, capacity="capacity")
@@ -182,7 +228,10 @@ def _estimate_max_flow(G: nx.DiGraph, out_cap, in_cap, ra: Region, rb: Region) -
 
 
 def estimate_trade(
-    pipelines: gpd.GeoDataFrame, internal_countries: set[str]
+    pipelines: gpd.GeoDataFrame,
+    internal_countries: set[str],
+    *,
+    relevant_nodes: gpd.GeoDataFrame | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Returns (trade_shapes, trade_external).
 
@@ -195,10 +244,15 @@ def estimate_trade(
     Notes:
       - internal countries are pass-through (never endpoints)
       - country-country pairs are excluded
+      - if relevant_nodes is provided, super source/sink attach only at snapped endpoints
     """
     G = _build_split_digraph(pipelines, internal_countries)
     out_cap, in_cap = _get_region_node_caps(G)
     pairs = sorted(_discover_adjacent_pairs(G))
+
+    node_ids = None
+    if relevant_nodes is not None:
+        node_ids = _snap_relevant_nodes(pipelines, relevant_nodes)
 
     shape_rows: list[dict] = []
     ext_rows: list[dict] = []
@@ -208,8 +262,8 @@ def estimate_trade(
         if ra.kind == "country" and rb.kind == "country":
             continue
 
-        cap_ab = _estimate_max_flow(G, out_cap, in_cap, ra, rb)
-        cap_ba = _estimate_max_flow(G, out_cap, in_cap, rb, ra)
+        cap_ab = _estimate_max_flow(G, out_cap, in_cap, ra, rb, relevant_nodes=node_ids)
+        cap_ba = _estimate_max_flow(G, out_cap, in_cap, rb, ra, relevant_nodes=node_ids)
         cap_bi = min(cap_ab, cap_ba)
 
         # shape-shape

@@ -50,7 +50,7 @@ rule prepare_countries:
 
 rule prepare_pipelines:
     message:
-        "Harmonising SciGRID data."
+        "Harmonising SciGRID pipelines."
     params:
         imputation=config["imputation"],
     input:
