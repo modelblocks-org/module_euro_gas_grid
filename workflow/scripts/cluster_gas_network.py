@@ -168,7 +168,7 @@ def plot(
     fig, ax = plt.subplots(layout="constrained")
     shapes.boundary.plot(ax=ax, lw=0.5, color="black")
     pipes.plot("assignment", ax=ax, legend=True, lw=1)
-    nodes.plot(ax=ax, color="grey", markersize=3)
+    nodes.plot(ax=ax, color="grey", markersize=2)
 
     _plots.style_map_plot(ax, "Clustered pipelines")
     fig.savefig(output_file, dpi=300)
