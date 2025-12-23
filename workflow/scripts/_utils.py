@@ -6,6 +6,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 from pyproj import CRS
+from shapely.geometry import Point
 
 
 def to_crs(gdf: gpd.GeoDataFrame, crs: str) -> gpd.GeoDataFrame:
@@ -21,9 +22,6 @@ def check_projected_crs(crs) -> None:
     if not CRS(crs).is_projected:
         raise ValueError(f"Requested crs must be projected. Got {crs!r}.")
 
-
-# TODO: improve connection/juntion logic
-# connections with two bi-lateral lines are labeled as junctions
 def compute_node_graph_attributes(
     pipes: gpd.GeoDataFrame, nodes: gpd.GeoDataFrame
 ) -> gpd.GeoDataFrame:
@@ -68,88 +66,6 @@ def compute_node_graph_attributes(
         default="__error__",
     )
     return nodes
-
-
-def match_lines_to_polygons(
-    lines: gpd.GeoDataFrame,
-    polygons: gpd.GeoDataFrame,
-    *,
-    polygon_value_cols: str | Sequence[str] = "shape_id",
-    threshold: float = 0.5,
-    predicate: str = "intersects",
-    keep: str = "max_share",  # "max_share" | "first"
-) -> pd.DataFrame:
-    """Match each line to polygon attributes if >= threshold of its length lies within a polygon.
-
-    Uses a spatial join to generate candidate (line, polygon) pairs, then computes:
-
-        share = length(line ∩ polygon) / length(line)
-
-    and keeps matches where share >= threshold.
-    If multiple polygons qualify for a line, a single match is chosen via `keep`.
-
-    Args:
-        lines: GeoDataFrame of LineString geometries. Index must be unique.
-        polygons: GeoDataFrame of polygon geometries.
-        polygon_value_cols: Column name(s) from `polygons` to return.
-        threshold: Minimum fraction of line length that must lie within a polygon.
-            Must be in [0, 1].
-        predicate: Predicate for the initial candidate search (spatial index),
-            usually "intersects".
-        keep: How to resolve multiple qualifying polygons for the same line:
-            - "max_share": choose the polygon with the largest covered share (default)
-            - "first": choose the first qualifying polygon encountered
-
-    Returns:
-        DataFrame with index matching `lines.index` and columns `polygon_value_cols`.
-        Non-matching lines receive NA values.
-    """
-    if not (0.0 <= threshold <= 1.0):
-        raise ValueError("threshold must be in [0, 1].")
-
-    if not lines.index.is_unique:
-        raise ValueError("lines.index must be unique (required for stable assignment).")
-
-    if lines.crs is None or lines.crs != polygons.crs or not lines.crs.is_projected:
-        raise ValueError("An input has an invalid CRS.")
-
-    poly_cols = (
-        [polygon_value_cols]
-        if isinstance(polygon_value_cols, str)
-        else list(polygon_value_cols)
-    )
-
-    # output: only requested columns, indexed like lines
-    out = pd.DataFrame({c: pd.NA for c in poly_cols}, index=lines.index)
-
-    cand = gpd.sjoin(
-        lines[["geometry"]],
-        polygons[poly_cols + ["geometry"]],
-        how="inner",
-        predicate=predicate,
-    )
-    if cand.empty:
-        return out
-
-    cand = cand.join(polygons.geometry.rename("_poly_geom"), on="index_right")
-
-    line_len = lines.geometry.length.reindex(cand.index).to_numpy()
-    inter_len = cand.geometry.intersection(cand["_poly_geom"]).length.to_numpy()
-    cand["_share"] = np.where(line_len > 0, inter_len / line_len, 0.0)
-
-    cand = cand[cand["_share"] >= threshold]
-    if cand.empty:
-        return out
-
-    if keep == "max_share":
-        best = cand.loc[cand.groupby(level=0)["_share"].idxmax()]
-    elif keep == "first":
-        best = cand[~cand.index.duplicated(keep="first")]
-    else:
-        raise ValueError("keep must be 'max_share' or 'first'.")
-
-    out.loc[best.index, poly_cols] = best[poly_cols].to_numpy()
-    return out
 
 
 def match_points_to_polygons(
@@ -204,3 +120,51 @@ def match_points_to_polygons(
         output.loc[best.index, poly_cols] = best[poly_cols].to_numpy()
 
     return output
+
+
+def build_nodes_from_pipelines(pipelines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Construct a unique nodes GeoDataFrame from pipeline endpoints.
+
+    Returns one row per unique `node_id`, with point geometry at the line endpoint.
+    If the same `node_id` appears with different coordinates across pipelines,
+    raises a ValueError.
+
+    Output columns: ["node_id", "geometry"] with CRS copied from `pipelines`.
+    """
+    geom_types = pipelines.geometry.geom_type.unique()
+    if len(geom_types) != 1 or geom_types[0] != "LineString":
+        raise ValueError(f"Only LineStrings are valid. Found {geom_types!r}")
+
+    # extract endpoint geometries
+    start_pts = pipelines.geometry.apply(lambda g: Point(g.coords[0]))
+    end_pts = pipelines.geometry.apply(lambda g: Point(g.coords[-1]))
+
+    start = gpd.GeoDataFrame(
+        {"node_id": pipelines["start_node_id"], "geometry": start_pts},
+        crs=pipelines.crs,
+    )
+    end = gpd.GeoDataFrame(
+        {"node_id": pipelines["end_node_id"], "geometry": end_pts}, crs=pipelines.crs
+    )
+
+    nodes = pd.concat([start, end], ignore_index=True)
+    nodes = nodes.dropna(subset=["node_id"]).copy()
+    nodes["node_id"] = nodes["node_id"].astype(int)
+
+    # ensure a node_id never maps to multiple distinct coordinates
+    wkb = nodes.geometry.to_wkb()
+    conflicts = (
+        pd.DataFrame({"node_id": nodes["node_id"].to_numpy(), "wkb": wkb})
+        .groupby("node_id")["wkb"]
+        .nunique()
+    )
+    bad = conflicts[conflicts > 1].index.to_list()
+    if bad:
+        raise ValueError(f"Conflicting endpoint coordinates for node_id(s): {bad}")
+
+    nodes = (
+        nodes.sort_values("node_id", kind="mergesort")
+        .drop_duplicates("node_id")
+        .reset_index(drop=True)
+    )
+    return gpd.GeoDataFrame(nodes[["node_id", "geometry"]], crs=pipelines.crs)
