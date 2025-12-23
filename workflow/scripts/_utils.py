@@ -150,3 +150,57 @@ def match_lines_to_polygons(
 
     out.loc[best.index, poly_cols] = best[poly_cols].to_numpy()
     return out
+
+
+def match_points_to_polygons(
+    points: gpd.GeoDataFrame,
+    polygons: gpd.GeoDataFrame,
+    *,
+    polygon_columns: str | Sequence[str] = "shape_id",
+    predicate: str = "intersects",
+) -> pd.DataFrame:
+    """Match each point to polygon attributes, resolving overlaps by smallest polygon area.
+
+    Uses a spatial join to generate candidate (point, polygon) pairs, then if multiple
+    polygons match a point (e.g., overlapping polygons), chooses the polygon with the
+    smallest area.
+
+    Args:
+        points: GeoDataFrame of Point geometries. Index must be unique.
+        polygons: GeoDataFrame of polygon geometries.
+        polygon_columns: Column name(s) from `polygons` to return.
+        predicate: Spatial predicate for matching:
+            - "intersects": includes points on polygon boundaries
+            - "within": point strictly inside polygon (boundary -> no match)
+
+    Returns:
+        DataFrame with index matching `points.index` and columns `polygon_columns`.
+        Non-matching points receive NA values.
+    """
+    if not points.index.is_unique:
+        raise ValueError("points.index must be unique.")
+    check_projected_crs(points.crs)
+    if points.crs != polygons.crs:
+        raise ValueError("points and polygons must share a CRS.")
+
+    poly_cols = (
+        [polygon_columns] if isinstance(polygon_columns, str) else list(polygon_columns)
+    )
+
+    output = pd.DataFrame({c: pd.NA for c in poly_cols}, index=points.index)
+
+    # relevant polygon attributes
+    polys = polygons[poly_cols + ["geometry"]].copy()
+    polys["_poly_area"] = polys.geometry.area
+
+    candidates = gpd.sjoin(
+        points[["geometry"]], polys, how="inner", predicate=predicate
+    )
+    if not candidates.empty:
+        # smallest area wins: sort then keep first candidate per point index
+        candidates = candidates.sort_values("_poly_area", kind="mergesort")
+        best = candidates[~candidates.index.duplicated(keep="first")]
+
+        output.loc[best.index, poly_cols] = best[poly_cols].to_numpy()
+
+    return output
