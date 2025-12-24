@@ -25,12 +25,8 @@ from shapely.geometry import Point
 if TYPE_CHECKING:
     snakemake: Any
 
-# Density at normal temperature and pressure (closer to operating conditions than STP)
-# https://www.engineeringtoolbox.com/gas-density-d_158.html
-CH4_KG_M3 = 0.668
-# Typical values for natural gas (CH4)
-# https://ocw.tudelft.nl/wp-content/uploads/Summary_table_with_heating_values_and_CO2_emissions.pdf
-CH4_HHV_MJ_PER_KG = 55
+NG_LHV_KWH_PER_M3 = 10.5
+NG_LHV_MJ_PER_M3  = NG_LHV_KWH_PER_M3 * 3.6  # 37.8 MJ/m3
 # Destroyed underwater pipelines.
 # https://en.wikipedia.org/wiki/Nord_Stream_pipelines_sabotage
 NORDSTREAM_IDS = (6055, 6364)
@@ -285,7 +281,8 @@ def estimate_ch4_capacity(
     *,
     recalculate_below_mw: float | None = None,
     capacity_correction_threshold: float = 8,
-    remove_nordstream: bool = True,
+    excluded_pipeline_ids: list[int] | None = None,
+    bidirectional_below_km: float = 10.0,
 ) -> gpd.GeoDataFrame:
     """Estimate natural gas capacity for each pipeline segment.
 
@@ -300,15 +297,17 @@ def estimate_ch4_capacity(
             capacities below this will use recalculated values. Defaults to None.
         capacity_correction_threshold (int, optional):
             Ratio threshold to trigger recalculation. Defaults to 8.
-        remove_nordstream (bool, optional):
-            Drop nordstream pipelines.
+        excluded_pipeline_ids (list[int], optional):
+            List of unique pipeline IDs to drop.
+        bidirectional_below_km (int):
+            Pipelines below this length will be assumed to be bidirectonal.
 
     Returns:
         gpd.GeoDataFrame: pipeline dataframe with CH4 capacity.
     """
     pipes = pipes.copy()
 
-    conversion_factor = 1e6 * CH4_KG_M3 * CH4_HHV_MJ_PER_KG / (24 * 60 * 60)
+    conversion_factor = 1e6 * NG_LHV_MJ_PER_M3 / (24 * 60 * 60)
 
     # Base estimate: convert reported capacity (million m3 / day) to MW
     pipes["ch4_capacity_mw"] = pipes["max_cap_M_m3_per_d"] * conversion_factor
@@ -319,20 +318,30 @@ def estimate_ch4_capacity(
         pipes.loc[inferred_mask, "diameter_mm"] = inferred_mm
         pipes.loc[inferred_mask, "diameter_method"] = "inferred"
 
-    nordstream = pipes["pipeline_id"].isin(NORDSTREAM_IDS)
-    if remove_nordstream:
-        # Recommended option. See:
-        # https://en.wikipedia.org/wiki/Nord_Stream_pipelines_sabotage
-        pipes = pipes.loc[~nordstream]
+    # short lines are assumed to be bidirectional
+    length_km = pipes.geometry.length / 1000.0
+    short_lines = length_km < float(bidirectional_below_km)
+    pipes.loc[short_lines, "is_bidirectional"] = True
+
+    # Optional exclusion list (configurable). NordStream can be added to it.
+    exclude_ids: set[int] = set(excluded_pipeline_ids or [])
+    # Remove destroyed pipelines. See:
+    # https://en.wikipedia.org/wiki/Nord_Stream_pipelines_sabotage
+    exclude_ids |= set(NORDSTREAM_IDS)
+
+    if exclude_ids:
+        pipes = pipes.loc[~pipes["pipeline_id"].isin(exclude_ids)]
 
     # cap_diam_mw should match the *current* pipes
     cap_diam_mw = pipes["diameter_mm"].apply(_diameter_to_capacity)
 
     ratio = pipes["ch4_capacity_mw"] / cap_diam_mw
     thr = capacity_correction_threshold
-    discrepant_mask = ~pipes["pipeline_id"].isin(NORDSTREAM_IDS) & (
-        (ratio > thr) | (ratio < 1 / thr)
-    )
+
+    # exclude high pressure pipelines from ratio-based corrections
+    below_max_press = pipes["max_pressure_bar"] < 220
+
+    discrepant_mask = ((ratio > thr) | (ratio < 1 / thr)) & below_max_press
 
     # Optional: force recalculation below a threshold
     low_mask = pd.Series(False, index=pipes.index)
@@ -531,7 +540,6 @@ def main():
         pipes,
         inferred_mm=smk_params["imputation"].get("inferred_mm", None),
         recalculate_below_mw=smk_params["imputation"].get("recalculate_below_mw", None),
-        remove_nordstream=smk_params["imputation"]["remove_nordstream"],
     )
     pipes = identify_offshore_pipelines(pipes, snakemake.input.landmass, crs=crs)
 

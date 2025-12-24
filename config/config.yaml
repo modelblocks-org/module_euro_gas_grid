@@ -17,7 +17,6 @@ clustering:
 
 
 imputation:
-  remove_nordstream: True
   buffer_distance: 100
   inferred_mm: 500
   recalculate_below_mw: 500
