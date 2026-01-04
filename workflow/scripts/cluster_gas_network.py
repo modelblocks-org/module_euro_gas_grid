@@ -102,7 +102,7 @@ def aggregate_terminals_to_points(
 def build_capacity_digraph(
     pipelines: pd.DataFrame,
     *,
-    cap_col: str = "ch4_capacity_mw",
+    cap_col: str = "capacity_mw",
     bidir_col: str = "is_bidirectional",
 ) -> nx.DiGraph:
     """Directed capacity graph on node_id integers.
@@ -218,7 +218,7 @@ def build_trade_network_with_hubs(
 
     Args:
         nodes: Point GeoDataFrame with at least ["node_id","geometry","shape_id","sovereign_id"].
-        pipelines: Table with at least ["start_node_id","end_node_id","ch4_capacity_mw","is_bidirectional"].
+        pipelines: Table with at least ["start_node_id","end_node_id","capacity_mw","is_bidirectional"].
         shapes: Polygon GeoDataFrame with at least ["shape_id","country_id","geometry"].
 
     Returns:

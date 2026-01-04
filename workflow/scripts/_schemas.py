@@ -66,12 +66,10 @@ class PipelineSchema(pa.DataFrameModel):
     "Max pressure (used for sectioning)."
     is_bidirectional: Series[bool]
     "Pipeline direction."
-    ch4_capacity_mw: Series[float] = pa.Field(gt=0)
-    "CH4 pipeline capacity in MW (nominal)."
-    ch4_capacity_method: Series[str]
+    capacity_mw: Series[float] = pa.Field(gt=0)
+    "Pipeline capacity in MW (nominal)."
+    capacity_mw_method: Series[str]
     "Method used to calculate CH4 capacity."
-    is_offshore: Series[bool]
-    "Flag offshore pipelines (outside of country landmass)."
     shape_id: Series[str] | None = pa.Field(nullable=True)
     "Shape ID a pipeline corresponds to."
     country_id: Series[str] | None = pa.Field(str_length=3, nullable=True)
@@ -102,8 +100,8 @@ class NodeSchema(pa.DataFrameModel):
         isin=["source", "sink", "terminal", "connection", "junction"]
     )
     """Type of element."""
-    country_id: Series[str] | None = pa.Field(str_length=3, nullable=True)
-    "Country identifier (ISO3 in most cases)."
+    sovereign_id: Series[str] | None = pa.Field(str_length=3, nullable=True)
+    "Sovereign country identifier (ISO3 in most cases)."
     geometry: GeoSeries
     "Must be points."
 

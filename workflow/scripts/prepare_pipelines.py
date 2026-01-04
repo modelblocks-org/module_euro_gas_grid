@@ -27,9 +27,6 @@ if TYPE_CHECKING:
 
 NG_LHV_KWH_PER_M3 = 10.5
 NG_LHV_MJ_PER_M3  = NG_LHV_KWH_PER_M3 * 3.6  # 37.8 MJ/m3
-# Destroyed underwater pipelines.
-# https://en.wikipedia.org/wiki/Nord_Stream_pipelines_sabotage
-NORDSTREAM_IDS = (6055, 6364)
 
 
 def _line_midpoint_safe(geom):
@@ -88,56 +85,16 @@ def _diameter_to_capacity(pipe_diameter_mm: float) -> float:
         return a3 + m3 * d
 
 
-def _fill_country_ids(
-    nodes: gpd.GeoDataFrame,
-    countries_file: str,
-    *,
-    country_code_col: str = "country_code",
-    id_col: str = "sovereign_id",
-    missing: str = "XXX",
-) -> pd.Series:
-    ids = nodes[country_code_col]
-
-    # start with all missing, overwrite if valid
-    out = pd.Series(missing, index=nodes.index)
-    # convert only codes that are present and not explicitly "unknown"
-    mask = ids.notna() & ~ids.isin({"XX", missing})
-    if mask.any():
-        unique = pd.unique(ids.loc[mask])
-        converted = coco.convert(unique.tolist(), to="iso3", not_found=np.nan)
-        translator = dict(zip(unique, np.atleast_1d(converted)))
-        out.loc[mask] = ids.loc[mask].map(translator).fillna(missing)
-
-    # spatial fill only remaining unknowns
-    mask = out.eq(missing) & nodes.geometry.notna()
-    if mask.any():
-        countries = gpd.read_parquet(countries_file)[[id_col, "geometry"]]  # <- fix
-        countries = _utils.to_crs(countries, nodes.crs)
-
-        joined = gpd.sjoin(
-            nodes.loc[mask, ["geometry"]], countries, how="inner", predicate="within"
-        )
-
-        if joined.index.duplicated(keep=False).any():
-            bad = joined.index[joined.index.duplicated(keep=False)].unique().tolist()
-            raise RuntimeError(f"Ambiguous country match for node index(es): {bad}")
-        out.loc[joined.index] = joined[id_col].astype(str).values
-
-    return out
-
-
 def match_pipes_to_nodes(
     pipes: gpd.GeoDataFrame,
     nodes: gpd.GeoDataFrame,
     *,
     buffer_dist: float = 100.0,
-    crs: str = "EPSG:3035",
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """Link assign pipelines to node IDs."""
-    _utils.check_projected_crs(crs)
-    pipes = _utils.to_crs(pipes, crs)
+    _utils.check_projected_crs(pipes.crs)
+    crs = pipes.crs
     nodes = _utils.to_crs(nodes, crs)
-
     n = len(pipes)
 
     # build aligned endpoints (start,end,start,end,...) w/ geometry
@@ -218,24 +175,27 @@ def match_pipes_to_nodes(
     return pipes, nodes
 
 
-def initialise_nodes(nodes_file: str, countries_file: str) -> gpd.GeoDataFrame:
+def initialise_nodes(nodes_file: str, countries_file: str, proj_crs) -> gpd.GeoDataFrame:
     """Fit SciGrid Nodes to our schema."""
-    raw = gpd.read_file(nodes_file).reset_index(drop=True)
+    raw = _utils.to_crs(gpd.read_file(nodes_file).reset_index(drop=True), proj_crs)
+    countries = _utils.to_crs(gpd.read_parquet(countries_file), proj_crs)
     nodes = gpd.GeoDataFrame(
         {
             "node_id": raw.index.to_numpy(dtype=int),
-            "country_id": _fill_country_ids(raw, countries_file),
             "geometry": raw["geometry"],
         },
         geometry="geometry",
         crs=raw.crs,
     )
+    nodes = nodes.join(
+        _utils.match_points_to_polygons(nodes, countries, "sovereign_id")
+    )
     return nodes
 
 
-def initialise_pipelines(pipelines_file: str) -> gpd.GeoDataFrame:
+def initialise_pipelines(pipelines_file: str, crs: str) -> gpd.GeoDataFrame:
     """Fit SciGrid PipeSegments to our schema."""
-    raw = gpd.read_file(pipelines_file).reset_index(drop=True)
+    raw = _utils.to_crs(gpd.read_file(pipelines_file).reset_index(drop=True), crs)
 
     param_cols = [
         "diameter_mm",
@@ -275,14 +235,14 @@ def initialise_pipelines(pipelines_file: str) -> gpd.GeoDataFrame:
     return pipes
 
 
-def estimate_ch4_capacity(
+def estimate_capacity(
     pipes: gpd.GeoDataFrame,
     inferred_mm: float | None = None,
     *,
     recalculate_below_mw: float | None = None,
     capacity_correction_threshold: float = 6,
     excluded_pipeline_ids: list[int] | None = None,
-    bidirectional_below_km: float = 10.0,
+    bidirectional_below_distance: float = 10000.0,
 ) -> gpd.GeoDataFrame:
     """Estimate natural gas capacity for each pipeline segment.
 
@@ -299,7 +259,7 @@ def estimate_ch4_capacity(
             Ratio threshold to trigger recalculation. Defaults to 8.
         excluded_pipeline_ids (list[int], optional):
             List of unique pipeline IDs to drop.
-        bidirectional_below_km (int):
+        bidirectional_below_distance (int):
             Pipelines below this length will be assumed to be bidirectonal.
 
     Returns:
@@ -310,7 +270,7 @@ def estimate_ch4_capacity(
     conversion_factor = 1e6 * NG_LHV_MJ_PER_M3 / (24 * 60 * 60)
 
     # Base estimate: convert reported capacity (million m3 / day) to MW
-    pipes["ch4_capacity_mw"] = pipes["max_cap_M_m3_per_d"] * conversion_factor
+    pipes["capacity_mw"] = pipes["max_cap_M_m3_per_d"] * conversion_factor
 
     # Optionally override inferred diameters
     inferred_mask = pipes["diameter_method"].ne("raw")
@@ -319,15 +279,12 @@ def estimate_ch4_capacity(
         pipes.loc[inferred_mask, "diameter_method"] = "inferred"
 
     # short lines are assumed to be bidirectional
-    length_km = pipes.geometry.length / 1000.0
-    short_lines = length_km < float(bidirectional_below_km)
+    length_km = pipes.geometry.length
+    short_lines = length_km < float(bidirectional_below_distance)
     pipes.loc[short_lines, "is_bidirectional"] = True
 
     # Optional exclusion list (configurable). NordStream can be added to it.
     exclude_ids: set[int] = set(excluded_pipeline_ids or [])
-    # Remove destroyed pipelines. See:
-    # https://en.wikipedia.org/wiki/Nord_Stream_pipelines_sabotage
-    exclude_ids |= set(NORDSTREAM_IDS)
 
     if exclude_ids:
         pipes = pipes.loc[~pipes["pipeline_id"].isin(exclude_ids)]
@@ -335,7 +292,7 @@ def estimate_ch4_capacity(
     # cap_diam_mw should match the *current* pipes
     cap_diam_mw = pipes["diameter_mm"].apply(_diameter_to_capacity)
 
-    ratio = pipes["ch4_capacity_mw"] / cap_diam_mw
+    ratio = pipes["capacity_mw"] / cap_diam_mw
     thr = capacity_correction_threshold
 
     # exclude high pressure pipelines from ratio-based corrections
@@ -346,84 +303,24 @@ def estimate_ch4_capacity(
     # Optional: force recalculation below a threshold
     low_mask = pd.Series(False, index=pipes.index)
     if recalculate_below_mw is not None:
-        low_mask = pipes["ch4_capacity_mw"] <= recalculate_below_mw
+        low_mask = pipes["capacity_mw"] <= recalculate_below_mw
 
     # Apply corrections
     correction_mask = discrepant_mask | low_mask
-    pipes.loc[correction_mask, "ch4_capacity_mw"] = cap_diam_mw.loc[correction_mask]
+    pipes.loc[correction_mask, "capacity_mw"] = cap_diam_mw.loc[correction_mask]
 
     # Track method provenance
-    pipes["ch4_capacity_method"] = "conversion factor based"
-    pipes.loc[correction_mask, "ch4_capacity_method"] = "diameter based"
-    pipes.loc[discrepant_mask & ~low_mask, "ch4_capacity_method"] = (
+    pipes["capacity_mw_method"] = "conversion factor based"
+    pipes.loc[correction_mask, "capacity_mw_method"] = "diameter based"
+    pipes.loc[discrepant_mask & ~low_mask, "capacity_mw_method"] = (
         "diameter based (ratio discrepancy)"
     )
-    pipes.loc[low_mask & ~discrepant_mask, "ch4_capacity_method"] = (
+    pipes.loc[low_mask & ~discrepant_mask, "capacity_mw_method"] = (
         "diameter based (below threshold)"
     )
-    pipes.loc[low_mask & discrepant_mask, "ch4_capacity_method"] = (
+    pipes.loc[low_mask & discrepant_mask, "capacity_mw_method"] = (
         "diameter based (ratio discrepancy+below threshold)"
     )
-    return pipes
-
-
-def identify_offshore_pipelines(
-    pipes: gpd.GeoDataFrame,
-    landmass_file: str,
-    *,
-    n_samples: int = 50,
-    land_threshold: float = 0.5,
-    crs: str = "EPSG:3035",
-) -> gpd.GeoDataFrame:
-    """Add boolean column `is_offshore` to the dataset.
-
-    1. Sample `n_samples` points along each line in normalized [0,1].
-    2. Compute fraction of samples intersecting land.
-    3. If land_fraction < land_threshold, label as offshore.
-    """
-    # Initial checks
-    bad = pipes.geometry.isna() | pipes.geometry.is_empty
-    if bad.any():
-        preview = pipes.loc[bad, "pipeline_id"].head(5)
-        raise RuntimeError(
-            f"Pipe geometry is missing/empty for {int(bad.sum())} row(s):\n"
-            f"{preview.to_string(index=True)}"
-        )
-    _utils.check_projected_crs(crs)
-
-    land = _schemas.LandSchema.validate(gpd.read_parquet(landmass_file))
-    pipes_p = pipes.to_crs(crs)
-    land = land.to_crs(crs)
-
-    land_union = land.geometry.union_all()
-    fracs = np.linspace(0.0, 1.0, n_samples)
-
-    points, seg_idx = [], []
-    for idx, geom in pipes_p.geometry.items():
-        g = geom
-        # If something weird sneaks in, fall back to using only the midpoint
-        if getattr(g, "length", 0) == 0:
-            p = _line_midpoint_safe(g)
-            if p is not None:
-                points.append(p)
-                seg_idx.append(idx)
-            continue
-
-        for f in fracs:
-            points.append(g.interpolate(float(f), normalized=True))
-            seg_idx.append(idx)
-
-    pts = gpd.GeoDataFrame({"seg_idx": seg_idx}, geometry=points, crs=pipes_p.crs)
-
-    on_land = pts.geometry.intersects(land_union)
-    land_frac = on_land.groupby(pts["seg_idx"]).mean().reindex(pipes.index)
-    if land_frac.isna().any():
-        bad_idx = land_frac.index[land_frac.isna()].tolist()
-        raise RuntimeError(
-            f"Failed to compute land fraction for pipe index(es): {bad_idx[:20]}"
-        )
-
-    pipes["is_offshore"] = land_frac <= land_threshold
     return pipes
 
 
@@ -438,23 +335,26 @@ def plot(
     fig = plt.figure(figsize=(10, 10), layout="compressed")
 
     # 2 rows × 3 cols, last col is the colorbar gutter.
-    gs = fig.add_gridspec(2, 3, width_ratios=(1, 1, 0.045), height_ratios=(1, 1))
+    gs = fig.add_gridspec(2, 4, width_ratios=(1, 0.045, 1, 0.045), height_ratios=(1, 1))
 
     # Main panels
     ax_ul = fig.add_subplot(gs[0, 0])  # onshore/offshore
-    ax_uc = fig.add_subplot(gs[0, 1])  # capacity
-    ax_cb = fig.add_subplot(gs[0, 2])  # colorbar (only for top row)
+    ax_cb1 = fig.add_subplot(gs[0, 1])  # colorbar (only for top row)
+    ax_uc = fig.add_subplot(gs[0, 2])  # capacity
+    ax_cb2 = fig.add_subplot(gs[0, 3])  # colorbar (only for top row)
 
     ax_bl = fig.add_subplot(gs[1, 0])  # network properties
 
     # Bottom-right: 3 stacked densities
-    dens_gs = gs[1, 1].subgridspec(3, 1)
+    dens_gs = gs[1, 2].subgridspec(3, 1)
     ax_k1 = fig.add_subplot(dens_gs[0, 0])
     ax_k2 = fig.add_subplot(dens_gs[1, 0])
     ax_k3 = fig.add_subplot(dens_gs[2, 0])
 
     # Keep the bottom-right gutter empty/invisible
-    ax_empty = fig.add_subplot(gs[1, 2])
+    ax_empty = fig.add_subplot(gs[1, 1])
+    ax_empty.axis("off")
+    ax_empty = fig.add_subplot(gs[1, 3])
     ax_empty.axis("off")
 
     axes = {
@@ -464,36 +364,41 @@ def plot(
         "k1": ax_k1,
         "k2": ax_k2,
         "k3": ax_k3,
-        "cb": ax_cb,
+        "cb1": ax_cb1,
+        "cb2": ax_cb2,
     }
 
     # ---- shared view window ----
     xlim, ylim = _plots.get_padded_bounds(pipes, pad_frac=0.02)
     countries_view = countries.cx[xlim[0] : xlim[1], ylim[0] : ylim[1]]
 
-    # ---- UL: onshore/offshore ----
-    title = "Onshore/offshore gas pipelines"
+    # ---- UL: diameter ----
+    title = r"Pipeline diameter ($mm$)"
+    cmap = Colormap("bids:magma").to_mpl()
+    v = pipes["diameter_mm"]
+    norm = mpl.colors.Normalize(vmin=float(v.min()), vmax=float(v.max()))
     countries_view.plot(ax=ax_ul, color="black", alpha=0.05, zorder=-2)
     countries_view.boundary.plot(ax=ax_ul, color="black", lw=0.5, zorder=-1)
-    offshore = pipes["is_offshore"]
-    pipes.loc[~offshore].plot(ax=ax_ul, color="tab:brown", lw=0.6, label="onshore")
-    pipes.loc[offshore].plot(ax=ax_ul, color="tab:blue", lw=1.0, label="offshore")
+    pipes.plot("diameter_mm", ax=ax_ul, cmap=cmap, norm=norm, lw=0.8)
     _plots.style_map_plot(ax_ul, title, xlim, ylim)
-    ax_ul.legend(loc="upper right")
+
+    sm = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
+    sm.set_array([])
+    _ = fig.colorbar(sm, cax=ax_cb1)
 
     # ---- UC: capacity + dedicated colorbar axis ----
-    title = r"$CH_4$ pipeline capacity ($MW$)"
+    title = r"Pipeline capacity ($MW$)"
     cmap = Colormap("bids:fake_parula").to_mpl()
-    v = pipes["ch4_capacity_mw"]
+    v = pipes["capacity_mw"]
     norm = mpl.colors.Normalize(vmin=float(v.min()), vmax=float(v.max()))
     countries_view.plot(ax=ax_uc, color="black", alpha=0.05, zorder=-2)
     countries_view.boundary.plot(ax=ax_uc, color="black", lw=0.5, zorder=-1)
-    pipes.plot("ch4_capacity_mw", ax=ax_uc, cmap=cmap, norm=norm, lw=0.8)
+    pipes.plot("capacity_mw", ax=ax_uc, cmap=cmap, norm=norm, lw=0.8)
     _plots.style_map_plot(ax_uc, title, xlim, ylim)
 
     sm = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
     sm.set_array([])
-    _ = fig.colorbar(sm, cax=ax_cb)
+    _ = fig.colorbar(sm, cax=ax_cb2)
 
     # ---- BL: network properties ----
     title = "Gas network properties"
@@ -516,7 +421,7 @@ def plot(
 
     # ---- densities ----
     _plots.plot_density(ax_k1, pipes["diameter_mm"], r"Pipeline diameter ($mm$)")
-    _plots.plot_density(ax_k2, pipes["ch4_capacity_mw"], r"Pipeline capacity ($MW$)")
+    _plots.plot_density(ax_k2, pipes["capacity_mw"], r"Pipeline capacity ($MW$)")
     unit_name = pipes.crs.axis_info[0].unit_name
     _plots.plot_density(
         ax_k3, pipes.geometry.length, rf"Pipeline length (${unit_name}$)"
@@ -527,21 +432,24 @@ def plot(
 
 def main():
     """Main process when calling from snakemake."""
-    crs = "EPSG:3035"  # ETRS89-extended / LAEA Europe
-    smk_params = snakemake.params
+    proj_crs = snakemake.params.projected_crs
+    _utils.check_projected_crs(proj_crs)
+    imputation = snakemake.params.imputation
 
     # Transformations
     countries_file = snakemake.input.countries
-    nodes = initialise_nodes(snakemake.input.raw_nodes, countries_file)
-    pipes = initialise_pipelines(snakemake.input.raw_pipelines)
-    pipes, nodes = match_pipes_to_nodes(pipes, nodes, crs=crs)
+    nodes = initialise_nodes(snakemake.input.raw_nodes, countries_file, proj_crs)
+    pipes = initialise_pipelines(snakemake.input.raw_pipelines, proj_crs)
+    pipes, nodes = match_pipes_to_nodes(pipes, nodes)
     nodes = _utils.compute_node_graph_attributes(pipes, nodes)
-    pipes = estimate_ch4_capacity(
+    pipes = estimate_capacity(
         pipes,
-        inferred_mm=smk_params["imputation"].get("inferred_mm", None),
-        recalculate_below_mw=smk_params["imputation"].get("recalculate_below_mw", None),
+        inferred_mm=imputation.get("inferred_mm", None),
+        recalculate_below_mw=imputation.get("recalculate_below_mw", None),
+        capacity_correction_threshold=imputation.get("capacity_correction_threshold", 6),
+        excluded_pipeline_ids=imputation.get("excluded_pipeline_ids", None),
+        bidirectional_below_distance=imputation.get("bidirectional_below_distance", 10000),
     )
-    pipes = identify_offshore_pipelines(pipes, snakemake.input.landmass, crs=crs)
 
     # Validation
     pipes_out_file = snakemake.output.pipelines
@@ -550,7 +458,7 @@ def main():
     _schemas.NodeSchema.validate(nodes).to_parquet(nodes_out_file)
 
     # Analysis
-    fig, _ = plot(pipes_out_file, nodes_out_file, countries_file, crs=crs)
+    fig, _ = plot(pipes_out_file, nodes_out_file, countries_file, crs=proj_crs)
     fig.savefig(snakemake.output.fig, dpi=300)
 
 

@@ -1,7 +1,7 @@
 """Rules to used to download automatic resource files."""
 
 wildcard_constraints:
-    nat_earth="|".join(["landmass", "countries"]),
+    nat_earth="|".join(["countries"]),
     scigrid_gas="|".join(["BorderPoints", "Compressors", "Consumers", "LNGs", "Nodes", "PipeSegments", "PowerPlants", "Productions", "Storages"])
 
 rule download_sci_grid:

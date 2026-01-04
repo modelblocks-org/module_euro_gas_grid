@@ -16,10 +16,10 @@ sys.stderr = open(snakemake.log[0], "w")
 
 def plot(land_file: str, output_file: str):
     """Plot countries."""
-    landmass = gpd.read_parquet(land_file)
+    countries = gpd.read_parquet(land_file)
     fig, ax = plt.subplots(layout="compressed")
 
-    landmass.plot(ax=ax, color="tab:purple")
+    countries.plot(ax=ax, color="tab:purple")
     _plots.style_map_plot(ax, "Natural Earth countries")
     fig.savefig(output_file, dpi=300)
 

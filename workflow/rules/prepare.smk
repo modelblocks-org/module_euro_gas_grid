@@ -1,22 +1,5 @@
 """Rules to standardise files."""
 
-# TODO: remove north sea shape
-rule prepare_shapes:
-    message:
-        "Preparing shapes for the Euro Gas Grid module."
-    input:
-        shapes="resources/user/{shapes}/shapes.parquet",
-        north_sea=rules.download_north_sea.output.zipfile if config["add_north_sea"] else None
-    output:
-        shapes="resources/automatic/{shapes}/shapes.parquet",
-        fig="resources/automatic/{shapes}/shapes.png",
-    log:
-        "logs/{shapes}/prepare_shapes.log"
-    conda:
-        "../envs/euro_gas_grid.yaml"
-    script:
-        "../scripts/prepare_shapes.py"
-
 rule prepare_landmass:
     message:
         "Preparing landmass data."
@@ -54,10 +37,10 @@ rule prepare_pipelines:
         "Harmonising SciGRID pipelines."
     params:
         imputation=config["imputation"],
+        projected_crs = config["crs"]["projected"],
     input:
         raw_pipelines="resources/automatic/scigrid_gas/PipeSegments.geojson",
         raw_nodes="resources/automatic/scigrid_gas/Nodes.geojson",
-        landmass=rules.prepare_landmass.output.landmass,
         countries=rules.prepare_countries.output.countries
     output:
         pipelines="resources/automatic/pipelines.parquet",
