@@ -1,3 +1,4 @@
+"""Gas network clustering to shapes."""
 import itertools
 import re
 import sys

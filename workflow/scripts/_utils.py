@@ -22,6 +22,39 @@ def check_projected_crs(crs) -> None:
     if not CRS(crs).is_projected:
         raise ValueError(f"Requested crs must be projected. Got {crs!r}.")
 
+
+def get_crs_meter_conversion_factor(crs) -> float:
+    """Return conversion factor from the CRS's linear unit to meters.
+
+    Examples:
+    - meter -> 1.0
+    - kilometer -> 1000.0
+    - foot -> 0.3048
+    """
+    crs = CRS.from_user_input(crs)
+    check_projected_crs(crs)
+
+    axis = crs.axis_info[0]
+    factor = getattr(axis, "unit_conversion_factor", None)
+    if factor is not None:
+        factor = float(factor)
+    else:
+        # Fallback
+        name = (getattr(axis, "unit_name", "") or "").lower()
+        if name in {"metre", "meter", "metres", "meters"}:
+            factor = 1.0
+        elif name in {"kilometre", "kilometer", "kilometres", "kilometers"}:
+            factor = 1000.0
+        elif name in {"us survey foot", "foot"}:
+            factor = 0.3048
+        else:
+            raise ValueError(
+                f"Unsupported CRS linear unit: {getattr(axis, 'unit_name', None)!r}"
+            )
+
+    return factor
+
+
 def compute_node_graph_attributes(
     pipes: gpd.GeoDataFrame, nodes: gpd.GeoDataFrame
 ) -> gpd.GeoDataFrame:
@@ -99,9 +132,7 @@ def match_points_to_polygons(
     if points.crs != polygons.crs:
         raise ValueError("points and polygons must share a CRS.")
 
-    poly_cols = (
-        [columns] if isinstance(columns, str) else list(columns)
-    )
+    poly_cols = [columns] if isinstance(columns, str) else list(columns)
 
     output = pd.DataFrame({c: pd.NA for c in poly_cols}, index=points.index)
 

@@ -8,17 +8,6 @@ from shapely.validation import make_valid
 ISO3_RE = r"^[A-Z]{3}$"
 
 
-class LandSchema(pa.DataFrameModel):
-    class Config:
-        coerce = True
-        strict = "filter"
-
-    feature_class: Series[str] = pa.Field(eq="Land")
-    "Must be 'Land'."
-    geometry: GeoSeries
-    "Land polygons."
-
-
 class CountriesSchema(pa.DataFrameModel):
     class Config:
         coerce = True
@@ -138,3 +127,22 @@ class ShapesSchema(pa.DataFrameModel):
             lambda g: g if g.is_valid else make_valid(g)
         )
         return df
+
+
+class H2Potential(pa.DataFrameModel):
+    """Schema for salt cavern storage."""
+
+    class Config:
+        coerce = True
+        strict = True
+
+    shape_id: Series[str] = pa.Field(unique=True)
+    "A unique identifier for this shape."
+    nearshore_gwh: Series[float] = pa.Field(ge=0)
+    """Nearshore salt cavern potential."""
+    offshore_gwh: Series[float] = pa.Field(ge=0)
+    """Offshore salt cavern potential."""
+    onshore_gwh: Series[float] = pa.Field(ge=0)
+    """Onshore salt cavern potential."""
+    total_gwh: Series[float] = pa.Field(ge=0)
+    """Aggregate salt cavern potential."""

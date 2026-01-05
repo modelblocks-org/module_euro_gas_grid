@@ -19,7 +19,6 @@ rule download_sci_grid:
     shell:
         """curl -sSLo {output} {params.url}"""
 
-
 rule unzip_scigrid_dataset:
     message:
         "Unzipping SciGrid '{wildcards.scigrid_gas}'."
@@ -35,6 +34,22 @@ rule unzip_scigrid_dataset:
         "../envs/clustering.yaml"
     script:
         "../scripts/unzip.py"
+
+
+rule download_salt_cavern_storage:
+    message:
+        "Downloading H2 salt cavern storage dataset by Caglayan et al (2019)."
+    params:
+        url = internal["resources"]["automatic"]["salt_cavern_h2"]
+    log:
+        "logs/automatic/download_salt_cavern_storage.log",
+    output:
+        caverns="resources/automatic/salt_cavern_h2.parquet",
+    localrule: True,
+    conda:
+        "../envs/shell.yaml"
+    shell:
+        """curl -sSLo {output} {params.url}"""
 
 
 rule download_natural_earth:

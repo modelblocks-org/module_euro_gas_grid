@@ -1,15 +1,16 @@
-# A minimal example of how to configure thi
-resolution: national #national, e_highways
-
+# A minimal example of how to configure this module
 crs:
   projected: "EPSG:3857"
 
 clustering:
-  replace_sovereign:
-    NL1: NLD
-    FI1: FIN
-    GB1: GBR
-    DN1: DNK
+  pipelines:
+    replace_sovereign:
+      NL1: NLD
+      FI1: FIN
+      GB1: GBR
+      DN1: DNK
+  salt_caverns:
+    min_gwh: 0.01  # values below this will be turned to zero
 
 imputation:
   inferred_mm: 500
