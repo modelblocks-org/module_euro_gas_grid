@@ -10,6 +10,7 @@ import cmap
 import geopandas as gpd
 import pandas as pd
 from matplotlib import pyplot as plt
+from matplotlib.colors import LogNorm
 
 if TYPE_CHECKING:
     snakemake: Any
@@ -74,30 +75,55 @@ def salt_cavern_potential_gwh(
 
 
 def plot(
-    shapes,
-    potential,
+    shapes: gpd.GeoDataFrame,
+    potential: gpd.GeoDataFrame,
+    caverns: gpd.GeoDataFrame,
     *,
     shape_id_col="shape_id",
-    value_col="total_gwh",
-    colormap="chrisluts:I_Purple",
+    storage_type_col="storage_type",
 ):
-    """Plot saltcavern potential."""
-    gdf = shapes[[shape_id_col, "geometry"]].merge(
-        potential[[shape_id_col, value_col]], on=shape_id_col, how="left"
-    )
+    """Plot salt cavern potential."""
+    fig, axs = plt.subplots(2, 2, figsize=(12, 12), layout="compressed")
+    axs = axs.ravel()
 
-    fig, ax = plt.subplots(figsize=(6, 6), layout="compressed")
-    gdf.plot(
-        ax=ax,
-        column=value_col,
-        cmap=cmap.Colormap(colormap).to_mpl(),
-        legend=True,
-        linewidth=0,
-        missing_kwds={"color": "lightgrey"}
+    # 1 - Raw cavern density
+    caverns = gpd.overlay(caverns, shapes[[shape_id_col, "geometry"]], how="intersection")
+
+    caverns.plot(
+        ax=axs[0],
+        column=storage_type_col,
+        cmap=cmap.Colormap("tol:high_contrast_alt").to_mpl(),
+        lw=0,
+        legend=True
     )
-    gdf.boundary.plot(ax=ax, color="black", lw=0.5)
-    _plots.style_map_plot(ax, "Salt cavern H2 potential ($GWh$)")
-    return fig, ax
+    shapes.boundary.plot(ax=axs[0], color="black", lw=0.5)
+    _plots.style_map_plot(axs[0], "Salt cavern potential density ($GWh/km^2$)")
+
+    # 2 to 4 - Aggregated potentials by storage type
+    gdf = shapes[[shape_id_col, "geometry"]].merge(potential, on=shape_id_col, how="left")
+
+    cols = [f"{st}_gwh" for st in ["offshore", "nearshore", "onshore"]]
+    all_types = pd.concat([gdf[c] for c in cols], ignore_index=True)
+    all_types = all_types[all_types > 0].dropna()
+    shared_norm = LogNorm(vmin=all_types.min(), vmax=all_types.max()) if len(all_types) else None
+
+    for ax, st in zip(axs[1:], ["offshore", "nearshore", "onshore"]):
+        col = f"{st}_gwh"
+        vals = gdf[col].where(gdf[col] > 0)
+
+        gdf.assign(**{col: vals}).plot(
+            ax=ax,
+            column=col,
+            cmap=cmap.Colormap("cmocean:balance_blue_r").to_mpl(),
+            norm=shared_norm,
+            legend=True,
+            lw=0,
+            missing_kwds={"color": "lightgrey"},
+        )
+        gdf.boundary.plot(ax=ax, color="black", lw=0.5)
+        _plots.style_map_plot(ax, f"Salt cavern H2 potential - {st} ($GWh$)")
+
+    return fig, axs
 
 
 def main():
@@ -113,7 +139,7 @@ def main():
     potential = _schemas.H2Potential.validate(potential)
     potential.to_parquet(snakemake.output.salt_cavern_h2_potential)
 
-    fig, _ = plot(shapes, potential)
+    fig, _ = plot(shapes, potential, caverns)
     fig.savefig(snakemake.output.fig, dpi=300)
 
 
