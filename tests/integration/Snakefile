@@ -6,20 +6,19 @@ configfile: workflow.source_path("./test_config.yaml")
 # `snakefile:` specifies the module. It can use file paths and special github(...) / gitlab(...) markers
 # `prefix:` re-routes all input/output paths of the module, helping to avoid file conflicts.
 module module_euro_gas_grid:
-    snakefile: "../../workflow/Snakefile"
-    config: config["module_euro_gas_grid"]
-    prefix: "results/integration_test/"
+    snakefile:
+        "../../workflow/Snakefile"
+    config:
+        config["module_euro_gas_grid"]
+    prefix:
+        "results/integration_test/"
+
 
 # rename all module rules with a prefix, to avoid naming conflicts.
 use rule * from module_euro_gas_grid as module_euro_gas_grid_*
 
 
-FILES = [
-    "hubs",
-    "nodes",
-    "pipelines",
-    "salt_cavern_h2_potential"
-]
+FILES = ["hubs", "nodes", "pipelines", "salt_cavern_h2_potential"]
 
 
 # Request something from the module

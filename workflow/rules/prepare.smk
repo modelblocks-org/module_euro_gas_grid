@@ -8,14 +8,13 @@ rule prepare_countries:
         raw_countries="resources/automatic/countries.zip",
     output:
         countries="resources/automatic/countries.parquet",
-        fig="resources/automatic/countries.png"
+        fig="resources/automatic/countries.png",
     log:
         "logs/prepare_countries.log",
     conda:
         "../envs/euro_gas_grid.yaml"
     script:
         "../scripts/prepare_countries.py"
-
 
 
 rule prepare_pipelines:
@@ -27,7 +26,7 @@ rule prepare_pipelines:
     input:
         raw_pipelines="resources/automatic/scigrid_gas/PipeSegments.geojson",
         raw_nodes="resources/automatic/scigrid_gas/Nodes.geojson",
-        countries=rules.prepare_countries.output.countries
+        countries=rules.prepare_countries.output.countries,
     output:
         pipelines="resources/automatic/pipelines.parquet",
         nodes="resources/automatic/nodes.parquet",

@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, Any
 import _plots
 import _schemas
 import _utils
-import country_converter as coco
 import geopandas as gpd
 import matplotlib as mpl
 import numpy as np
@@ -26,7 +25,7 @@ if TYPE_CHECKING:
     snakemake: Any
 
 NG_LHV_KWH_PER_M3 = 10.5
-NG_LHV_MJ_PER_M3  = NG_LHV_KWH_PER_M3 * 3.6  # 37.8 MJ/m3
+NG_LHV_MJ_PER_M3 = NG_LHV_KWH_PER_M3 * 3.6  # 37.8 MJ/m3
 
 
 def _line_midpoint_safe(geom):
@@ -86,10 +85,7 @@ def _diameter_to_capacity(pipe_diameter_mm: float) -> float:
 
 
 def match_pipes_to_nodes(
-    pipes: gpd.GeoDataFrame,
-    nodes: gpd.GeoDataFrame,
-    *,
-    buffer_dist: float = 100.0,
+    pipes: gpd.GeoDataFrame, nodes: gpd.GeoDataFrame, *, buffer_dist: float = 100.0
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """Link assign pipelines to node IDs."""
     _utils.check_projected_crs(pipes.crs)
@@ -175,15 +171,14 @@ def match_pipes_to_nodes(
     return pipes, nodes
 
 
-def initialise_nodes(nodes_file: str, countries_file: str, proj_crs) -> gpd.GeoDataFrame:
+def initialise_nodes(
+    nodes_file: str, countries_file: str, proj_crs
+) -> gpd.GeoDataFrame:
     """Fit SciGrid Nodes to our schema."""
     raw = _utils.to_crs(gpd.read_file(nodes_file).reset_index(drop=True), proj_crs)
     countries = _utils.to_crs(gpd.read_parquet(countries_file), proj_crs)
     nodes = gpd.GeoDataFrame(
-        {
-            "node_id": raw.index.to_numpy(dtype=int),
-            "geometry": raw["geometry"],
-        },
+        {"node_id": raw.index.to_numpy(dtype=int), "geometry": raw["geometry"]},
         geometry="geometry",
         crs=raw.crs,
     )
@@ -447,9 +442,13 @@ def main():
         pipes,
         inferred_mm=imputation.get("inferred_mm", None),
         recalculate_below_mw=imputation.get("recalculate_below_mw", None),
-        capacity_correction_threshold=imputation.get("capacity_correction_threshold", None),
+        capacity_correction_threshold=imputation.get(
+            "capacity_correction_threshold", None
+        ),
         excluded_pipeline_ids=imputation.get("excluded_pipeline_ids", None),
-        bidirectional_below_distance=imputation.get("bidirectional_below_distance", None),
+        bidirectional_below_distance=imputation.get(
+            "bidirectional_below_distance", None
+        ),
     )
 
     # Validation

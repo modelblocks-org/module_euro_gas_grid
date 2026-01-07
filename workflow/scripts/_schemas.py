@@ -101,6 +101,7 @@ class NodeSchema(pa.DataFrameModel):
 
 class ShapesSchema(pa.DataFrameModel):
     """Schema for geographic shapes."""
+
     class Config:
         coerce = True
         strict = "filter"

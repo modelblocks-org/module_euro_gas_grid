@@ -29,9 +29,7 @@ def build_request_all(shape: str):
 
 
 @pytest.mark.parametrize("shape", ["BALK", "BENLDE", "euro34"])
-def test_full_run(
-    user_path: Path, shape: str
-):
+def test_full_run(user_path: Path, shape: str):
     """Test a full request of module outputs (using images as proxy)."""
     request = build_request_all(shape)
 

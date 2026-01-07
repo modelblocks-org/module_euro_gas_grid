@@ -1,4 +1,5 @@
 """Gas network clustering to shapes."""
+
 import itertools
 import re
 import sys
@@ -487,8 +488,12 @@ def condense_agg_pipeline_pairs(
     out["has_b_to_a"] = out["capacity_b_to_a_mw"] > 0
     out["is_bidirectional"] = out["has_a_to_b"] & out["has_b_to_a"]
 
-    out["min_capacity_mw"] = out[["capacity_a_to_b_mw", "capacity_b_to_a_mw"]].min(axis="columns")
-    out["max_capacity_mw"] = out[["capacity_a_to_b_mw", "capacity_b_to_a_mw"]].max(axis="columns")
+    out["min_capacity_mw"] = out[["capacity_a_to_b_mw", "capacity_b_to_a_mw"]].min(
+        axis="columns"
+    )
+    out["max_capacity_mw"] = out[["capacity_a_to_b_mw", "capacity_b_to_a_mw"]].max(
+        axis="columns"
+    )
 
     geoms = []
     for a, b in out[["a", "b"]].itertuples(index=False):
@@ -528,7 +533,9 @@ def main():
     pipelines = _utils.to_crs(gpd.read_parquet(snakemake.input.pipelines), proj_crs)
     shapes = _utils.to_crs(gpd.read_parquet(snakemake.input.shapes), proj_crs)
     shapes = _schemas.ShapesSchema.validate(shapes)
-    shapes = shapes[shapes["shape_class"] == "land"]  # only land clustering is supported
+    shapes = shapes[
+        shapes["shape_class"] == "land"
+    ]  # only land clustering is supported
 
     # Prepare nodes dataset
     nodes = nodes.join(_utils.match_points_to_polygons(nodes, shapes, "shape_id"))

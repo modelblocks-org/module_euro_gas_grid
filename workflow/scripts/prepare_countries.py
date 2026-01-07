@@ -41,13 +41,14 @@ def prepare_countries(raw_file: str, output_file: str):
         crs=raw_countries.crs,
     )
     countries = countries.reset_index(drop=True)
-    countries["admin_id"] = coco.convert(countries["admin_name"], to="iso3", not_found="XXX")
+    countries["admin_id"] = coco.convert(
+        countries["admin_name"], to="iso3", not_found="XXX"
+    )
     _schemas.CountriesSchema.validate(countries).to_parquet(output_file)
 
 
 if __name__ == "__main__":
     prepare_countries(
-        raw_file=snakemake.input.raw_countries,
-        output_file=snakemake.output.countries,
+        raw_file=snakemake.input.raw_countries, output_file=snakemake.output.countries
     )
     plot(snakemake.output.countries, snakemake.output.fig)

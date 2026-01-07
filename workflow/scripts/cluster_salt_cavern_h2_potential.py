@@ -87,25 +87,31 @@ def plot(
     axs = axs.ravel()
 
     # 1 - Raw cavern density
-    caverns = gpd.overlay(caverns, shapes[[shape_id_col, "geometry"]], how="intersection")
+    caverns = gpd.overlay(
+        caverns, shapes[[shape_id_col, "geometry"]], how="intersection"
+    )
 
     caverns.plot(
         ax=axs[0],
         column=storage_type_col,
         cmap=cmap.Colormap("tol:high_contrast_alt").to_mpl(),
         lw=0,
-        legend=True
+        legend=True,
     )
     shapes.boundary.plot(ax=axs[0], color="black", lw=0.5)
     _plots.style_map_plot(axs[0], "Salt cavern potential density ($GWh/km^2$)")
 
     # 2 to 4 - Aggregated potentials by storage type
-    gdf = shapes[[shape_id_col, "geometry"]].merge(potential, on=shape_id_col, how="left")
+    gdf = shapes[[shape_id_col, "geometry"]].merge(
+        potential, on=shape_id_col, how="left"
+    )
 
     cols = [f"{st}_gwh" for st in ["offshore", "nearshore", "onshore"]]
     all_types = pd.concat([gdf[c] for c in cols], ignore_index=True)
     all_types = all_types[all_types > 0].dropna()
-    shared_norm = LogNorm(vmin=all_types.min(), vmax=all_types.max()) if len(all_types) else None
+    shared_norm = (
+        LogNorm(vmin=all_types.min(), vmax=all_types.max()) if len(all_types) else None
+    )
 
     for ax, st in zip(axs[1:], ["offshore", "nearshore", "onshore"]):
         col = f"{st}_gwh"
