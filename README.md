@@ -1,8 +1,13 @@
 # Module Euro Gas Grid
 
-A module to disaggregate gas networks for European countries.
+A module to disaggregate gas networks and $H2$ salt cavern storage for European regions.
+
+![example](./docs/pipelines.png)
 
 A modular `snakemake` workflow built for [`clio`](https://clio.readthedocs.io/) data modules.
+
+> [!NOTE]
+> This module is based on the work of the [PyPSA-Eur](https://github.com/PyPSA/pypsa-eur) model.
 
 ## Using this module
 
@@ -24,12 +29,6 @@ For testing, simply run:
 
 ```shell
 pixi run test-integration
-```
-
-To view the documentation locally, use:
-
-```shell
-pixi run serve-docs
 ```
 
 To test a minimal example of a workflow using this module:
