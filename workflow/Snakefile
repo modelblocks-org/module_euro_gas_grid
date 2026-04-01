@@ -4,6 +4,18 @@ from snakemake.utils import min_version, validate
 
 min_version("8.10")
 
+# !!!!! IMPORTANT !!!!!
+# Define pathvars for all user resource files and result files
+# This allows users to re-wire how the module is used in their workflow with ease.
+pathvars:
+    # User resources
+    user_shapes="<resources>/user/{shapes}/shapes.parquet",
+    # Module results
+    hubs="<results>/{shapes}/hubs.parquet",
+    nodes="<results>/{shapes}/nodes.parquet",
+    pipelines="<results>/{shapes}/pipelines.parquet",
+    salt_cavern_h2_potential="<results>/{shapes}/salt_cavern_h2_potential.parquet",
+
 
 # Load the example configuration. This will be overridden by users.
 configfile: workflow.source_path("../config/config.yaml")
