@@ -110,4 +110,4 @@ Natural Earth Admin 0 - Countries at 10m resolution. <https://www.naturalearthda
     - Neumann, F., Zeyen, E., Victoria, M., & Brown, T. (2023). The potential role of a hydrogen network in Europe. Joule, 7(8), 1793-1817. <https://doi.org/10.1016/j.joule.2023.06.016>.
     - Hofmann, F., Tries, C., Neumann, F. et al. H2 and CO2 network strategies for the European energy system. Nat Energy 10, 715–724 (2025). <https://doi.org/10.1038/s41560-025-01752-6>.
 - **Shape schema definition:**
-Ruiz Manuel, I. Modelblocks - module_geo_boundaries. Computer software. <https://github.com/calliope-project/module_geo_boundaries/>.
+Ruiz Manuel, I. Modelblocks - module_geo_boundaries. Computer software. <https://github.com/modelblocks-org/module_geo_boundaries/>.

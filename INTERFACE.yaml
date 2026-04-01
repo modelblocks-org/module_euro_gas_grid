@@ -15,7 +15,7 @@ pathvars:
       default: "<resources>/user/{shapes}/shapes.parquet"
       description: |
         Region geometries in parquet format.
-        These should conform to the schema defined in https://github.com/calliope-project/module_geo_boundaries/.
+        These should conform to the schema defined in https://github.com/modelblocks-org/module_geo_boundaries/.
   results:
     hubs:
       default: "<results>/{shapes}/hubs.parquet"
