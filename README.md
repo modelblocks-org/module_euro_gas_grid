@@ -60,11 +60,7 @@ The analysis of the module is structured as follows:
     Useful if you wish to estimate import limits in your model.
     - hubs: aggregated offshore pipeline components that connect to >= 3 terminals. A maximum per-hub throughput capacity limit is provided.
 
-    > [!IMPORTANT]
-    > This stage deviates from PyPSA-Eur procedures, meaning the resulting network will be different!
-
     <img src="./figures/aggregated.png" width="350" margin="auto">
-
 
 5. Salt caverns are grouped into three types: onshore, nearshore and offshore. A total sum is also provided.
 
