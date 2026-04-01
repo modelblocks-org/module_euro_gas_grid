@@ -1,26 +1,26 @@
 # Module Euro Gas Grid
 
-A module to disaggregate gas networks and $H2$ salt cavern storage for European regions.
+A module to cluster European gas networks into any resolution.
 
-![example](./docs/pipelines.png)
+## About this module
+<!-- Please do not modify this templated section -->
 
-A modular `snakemake` workflow built for [`clio`](https://clio.readthedocs.io/) data modules.
-
-> [!NOTE]
-> This module is based on the work of the [PyPSA-Eur](https://github.com/PyPSA/pypsa-eur) model.
-
-## Using this module
+This is a modular `snakemake` workflow built for [Modelblocks](https://www.modelblocks.org/) data modules.
 
 This module can be imported directly into any `snakemake` workflow.
-Please consult the integration example in `tests/integration/Snakefile` for more information.
+For more information, please consult:
+- The Modelblocks [documentation](https://modelblocks.readthedocs.io/en/latest/).
+- The integration example in this repository (`tests/integration/Snakefile`).
+- The `snakemake` [documentation on modularisation](https://snakemake.readthedocs.io/en/stable/snakefiles/modularization.html).
 
 ## Development
+<!-- Please do not modify this templated section -->
 
 We use [`pixi`](https://pixi.sh/) as our package manager for development.
-Once installed, run the following to clone this repo and install all dependencies.
+Once installed, run the following to clone this repository and install all dependencies.
 
 ```shell
-git clone git@github.com:calliope-project/module_euro_gas_grid.git
+git clone git@github.com:modelblocks-org/module_euro_gas_grid.git
 cd module_euro_gas_grid
 pixi install --all
 ```
@@ -38,3 +38,26 @@ pixi shell    # activate this project's environment
 cd tests/integration/  # navigate to the integration example
 snakemake --use-conda --cores 2  # run the workflow!
 ```
+
+## Documentation
+
+### Overview
+<!-- Please describe the processing stages of this module here -->
+
+### Configuration
+<!-- Feel free to describe how to configure this module below -->
+
+Please consult the configuration [README](./config/README.md) and the [configuration example](./config/config.yaml) for a general overview on the configuration options of this module.
+
+### Input / output structure
+<!-- Feel free to describe input / output file placement below -->
+
+Please consult the [interface file](./INTERFACE.yaml) for more information.
+
+### References
+<!-- Please provide thorough referencing below -->
+
+This module is based on the following research and datasets:
+
+*
+*

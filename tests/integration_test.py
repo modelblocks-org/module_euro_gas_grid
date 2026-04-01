@@ -1,7 +1,7 @@
-"""Set of standard clio tests.
+"""Set of standard Modelblocks tests.
 
-DO NOT MANUALLY MODIFY THIS FILE!
-It should be updated through our templating functions.
+PLEASE ENSURE THIS SET OF MINIMAL TESTS WORKS BEFORE PUBLISHING YOUR MODULE.
+Contents may be updated in future template updates.
 """
 
 import shutil
