@@ -68,6 +68,9 @@ The analysis of the module is structured as follows:
     ![aggregated](./figures/aggregated.png)
     </div>
 
+    > [IMPORTANT]
+    > This stage deviates from PyPSA-Eur procedures, meaning the resulting network will be different!
+
 5. Salt caverns are grouped into three types: onshore, nearshore and offshore. A total sum is also provided.
 <div style="width:70%; margin: auto;">
 
@@ -103,7 +106,7 @@ Caglayan, D. G., Weber, N., Heinrichs, H. U., Linßen, J., Robinius, M., Kukla, 
 - **National boundaries (used as reference for external trade):**
 Natural Earth Admin 0 - Countries at 10m resolution. <https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-admin-0-countries/>
 - **Original source-code / inspiration:**
-    - Brown, T., Victoria, M., Zeyen, E., Hofmann, F., Neumann, F., Frysztacki, M., Hampp, J., Schlachtberger, D., Hörsch, J., Schledorn, A., Schauß, C., van Greevenbroek, K., Millinger, M., Glaum, P., Xiong, B., & Seibold, T. PyPSA-Eur: An open sector-coupled optimisation model of the European energy system (Version v2025.07.0). Computer software.<https://github.com/pypsa/pypsa-eur>.
+    - Brown, T., Victoria, M., Zeyen, E., Hofmann, F., Neumann, F., Frysztacki, M., Hampp, J., Schlachtberger, D., Hörsch, J., Schledorn, A., Schauß, C., van Greevenbroek, K., Millinger, M., Glaum, P., Xiong, B., & Seibold, T. PyPSA-Eur: An open sector-coupled optimisation model of the European energy system (Version v2025.07.0). Computer software. <https://github.com/pypsa/pypsa-eur>.
     - Neumann, F., Zeyen, E., Victoria, M., & Brown, T. (2023). The potential role of a hydrogen network in Europe. Joule, 7(8), 1793-1817. <https://doi.org/10.1016/j.joule.2023.06.016>.
     - Hofmann, F., Tries, C., Neumann, F. et al. H2 and CO2 network strategies for the European energy system. Nat Energy 10, 715–724 (2025). <https://doi.org/10.1038/s41560-025-01752-6>.
 - **Shape schema definition:**

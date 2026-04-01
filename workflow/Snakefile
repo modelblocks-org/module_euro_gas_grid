@@ -38,7 +38,7 @@ rule all:
     output:
         "INVALID",
     log:
-        stderr="logs/all.stderr",
+        stderr="<logs>/all.stderr",
     conda:
         "envs/shell.yaml"
     shell:

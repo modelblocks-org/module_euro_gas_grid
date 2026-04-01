@@ -10,18 +10,18 @@ rule cluster_gas_network:
     input:
         pipelines=rules.prepare_pipelines.output.pipelines,
         nodes=rules.prepare_pipelines.output.nodes,
-        shapes="resources/user/{shapes}/shapes.parquet",
+        shapes="<resources>/user/{shapes}/shapes.parquet",
     output:
-        hubs="results/{shapes}/hubs.parquet",
-        pipelines="results/{shapes}/pipelines.parquet",
-        nodes="results/{shapes}/nodes.parquet",
+        hubs="<results>/{shapes}/hubs.parquet",
+        pipelines="<results>/{shapes}/pipelines.parquet",
+        nodes="<results>/{shapes}/nodes.parquet",
         fig=report(
-            "results/{shapes}/pipelines.png",
+            "<results>/{shapes}/pipelines.png",
             caption="../report/cluster_gas_network.rst",
             category="Euro gas grid module",
         ),
     log:
-        "logs/{shapes}/cluster_gas_network.log",
+        "<logs>/{shapes}/cluster_gas_network.log",
     conda:
         "../envs/euro_gas_grid.yaml"
     script:
@@ -36,16 +36,16 @@ rule cluster_salt_cavern_h2_potential:
         min_gwh_tolerance=config["clustering"]["salt_caverns"]["min_gwh"],
     input:
         salt_caverns=rules.download_salt_cavern_storage.output.caverns,
-        shapes="resources/user/{shapes}/shapes.parquet",
+        shapes="<resources>/user/{shapes}/shapes.parquet",
     output:
-        salt_cavern_h2_potential="results/{shapes}/salt_cavern_h2_potential.parquet",
+        salt_cavern_h2_potential="<results>/{shapes}/salt_cavern_h2_potential.parquet",
         fig=report(
-            "results/{shapes}/salt_cavern_h2_potential.png",
+            "<results>/{shapes}/salt_cavern_h2_potential.png",
             caption="../report/cluster_salt_cavern_h2_potential.rst",
             category="Euro gas grid module",
         ),
     log:
-        "logs/{shapes}/cluster_salt_cavern_h2_potential.log",
+        "<logs>/{shapes}/cluster_salt_cavern_h2_potential.log",
     conda:
         "../envs/euro_gas_grid.yaml"
     script:
