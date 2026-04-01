@@ -12,7 +12,7 @@ rule prepare_countries:
     log:
         "<logs>/prepare_countries.log",
     conda:
-        "../envs/euro_gas_grid.yaml"
+        "../envs/euro-gas-grid.yaml"
     script:
         "../scripts/prepare_countries.py"
 
@@ -38,6 +38,6 @@ rule prepare_pipelines:
     log:
         "<logs>/prepare_pipelines.log",
     conda:
-        "../envs/euro_gas_grid.yaml"
+        "../envs/euro-gas-grid.yaml"
     script:
         "../scripts/prepare_pipelines.py"

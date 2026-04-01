@@ -23,7 +23,7 @@ rule cluster_gas_network:
     log:
         "<logs>/{shapes}/cluster_gas_network.log",
     conda:
-        "../envs/euro_gas_grid.yaml"
+        "../envs/euro-gas-grid.yaml"
     script:
         "../scripts/cluster_gas_network.py"
 
@@ -47,6 +47,6 @@ rule cluster_salt_cavern_h2_potential:
     log:
         "<logs>/{shapes}/cluster_salt_cavern_h2_potential.log",
     conda:
-        "../envs/euro_gas_grid.yaml"
+        "../envs/euro-gas-grid.yaml"
     script:
         "../scripts/cluster_salt_cavern_h2_potential.py"
