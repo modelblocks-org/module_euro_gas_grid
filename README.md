@@ -45,17 +45,13 @@ snakemake --use-conda --cores 2  # run the workflow!
 <!-- Please describe the processing stages of this module here -->
 The analysis of the module is structured as follows:
 
-<div style="width:50%; margin: auto;">
 
-![rules](./figures/rulegraph.png)
-</div>
+<img src="./figures/rulegraph.png" width="400" margin="auto">
 
 1. Generic data necessary for processing is downloaded and stored locally.
 2. The SciGrid-Gas dataset is processed to compute per-pipeline capacity (in $MW$). If configured, several imputations may be applied to counteract overestimations, based on [PyPSA-Eur](https://github.com/PyPSA/pypsa-eur) algorithms.
-<div style="width:70%; margin: auto;">
 
-![pipelines](./figures/pipelines.jpeg)
-</div>
+    <img src="./figures/pipelines.jpeg" width="500" margin="auto">
 
 3. Geospatial input polygons ('shapes' provided by the user) are used as basis to aggregate both gas pipelines and salt cavern $H_2$ storage.
 4. Gas pipelines are converted into a network graph and then aggregated into three types of node using a [maximum flow algorithm](https://networkx.org/documentation/networkx-3.6/reference/algorithms/generated/networkx.algorithms.flow.preflow_push.html).
@@ -63,19 +59,16 @@ The analysis of the module is structured as follows:
     - outside terminals: the centroids of adjacent 'external' nations (at national resolution based on Natural Earth Admin 0 regions).
     Useful if you wish to estimate import limits in your model.
     - hubs: aggregated offshore pipeline components that connect to >= 3 terminals. A maximum per-hub throughput capacity limit is provided.
-    <div style="width:50%; margin: auto;">
 
-    ![aggregated](./figures/aggregated.png)
-    </div>
-
-    > [IMPORTANT]
+    > [!IMPORTANT]
     > This stage deviates from PyPSA-Eur procedures, meaning the resulting network will be different!
 
-5. Salt caverns are grouped into three types: onshore, nearshore and offshore. A total sum is also provided.
-<div style="width:70%; margin: auto;">
+    <img src="./figures/aggregated.png" width="350" margin="auto">
 
-![salt](./figures/salt_cavern_h2_potential_small.png)
-</div>
+
+5. Salt caverns are grouped into three types: onshore, nearshore and offshore. A total sum is also provided.
+
+    <img src="./figures/salt_cavern_h2_potential_small.png" width="500" margin="auto">
 
 
 ### Configuration
