@@ -1,17 +1,31 @@
-# Emulate a user configuring the module.
-configfile: workflow.source_path("./test_config.yaml")
+import yaml
 
+# Emulate a user configuring the module.
+module_config = dict()
+with open(workflow.source_path("../../config/config.yaml"), "r") as f:
+    module_config["module_euro_gas_grid"] = yaml.safe_load(f.read())
 
 # Import the module and configure it.
 # `snakefile:` specifies the module. It can use file paths and special github(...) / gitlab(...) markers
-# `prefix:` re-routes all input/output paths of the module, helping to avoid file conflicts.
+# `config:` specifies the module configuration.
+# `pathvars:` helps you re-wire where the module places files.
 module module_euro_gas_grid:
     snakefile:
         "../../workflow/Snakefile"
     config:
-        config["module_euro_gas_grid"]
-    prefix:
-        "results/integration_test/"
+        module_config["module_euro_gas_grid"]
+    pathvars:
+        # Redirect specific user resources (inputs)
+        user_shapes="resources/inputs/{shapes}/shapes.parquet",
+        # Redirect specific module results (outputs)
+        hubs="results/outputs/{shapes}/hubs.parquet",
+        nodes="results/outputs/{shapes}/nodes.parquet",
+        pipelines="results/outputs/{shapes}/pipelines.parquet",
+        salt_cavern_h2_potential="results/outputs/{shapes}/salt_cavern_h2_potential.parquet",
+        # Redirect module intermediate files
+        logs="resources/euro_gas_grid/logs",
+        resources="resources/euro_gas_grid/resources",
+        results="resources/euro_gas_grid/results",
 
 
 # rename all module rules with a prefix, to avoid naming conflicts.
@@ -28,6 +42,6 @@ rule all:
     default_target: True
     input:
         expand(
-            "results/integration_test/results/BALK/{file}.parquet",
+            "results/outputs/BALK/{file}.parquet",
             file=FILES,
         ),
