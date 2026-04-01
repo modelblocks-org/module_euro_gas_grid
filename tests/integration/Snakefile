@@ -5,6 +5,7 @@ module_config = dict()
 with open(workflow.source_path("../../config/config.yaml"), "r") as f:
     module_config["module_euro_gas_grid"] = yaml.safe_load(f.read())
 
+
 # Import the module and configure it.
 # `snakefile:` specifies the module. It can use file paths and special github(...) / gitlab(...) markers
 # `config:` specifies the module configuration.
