@@ -10,20 +10,20 @@ rule cluster_gas_network:
     input:
         pipelines=rules.prepare_pipelines.output.pipelines,
         nodes=rules.prepare_pipelines.output.nodes,
-        shapes="resources/user/{shapes}/shapes.parquet",
+        shapes="<user_shapes>",
     output:
-        hubs="results/{shapes}/hubs.parquet",
-        pipelines="results/{shapes}/pipelines.parquet",
-        nodes="results/{shapes}/nodes.parquet",
+        hubs="<hubs>",
+        pipelines="<pipelines>",
+        nodes="<nodes>",
         fig=report(
-            "results/{shapes}/pipelines.png",
+            "<results>/{shapes}/pipelines.png",
             caption="../report/cluster_gas_network.rst",
             category="Euro gas grid module",
         ),
     log:
-        "logs/{shapes}/cluster_gas_network.log",
+        "<logs>/{shapes}/cluster_gas_network.log",
     conda:
-        "../envs/euro_gas_grid.yaml"
+        "../envs/euro-gas-grid.yaml"
     script:
         "../scripts/cluster_gas_network.py"
 
@@ -36,17 +36,17 @@ rule cluster_salt_cavern_h2_potential:
         min_gwh_tolerance=config["clustering"]["salt_caverns"]["min_gwh"],
     input:
         salt_caverns=rules.download_salt_cavern_storage.output.caverns,
-        shapes="resources/user/{shapes}/shapes.parquet",
+        shapes="<user_shapes>",
     output:
-        salt_cavern_h2_potential="results/{shapes}/salt_cavern_h2_potential.parquet",
+        salt_cavern_h2_potential="<salt_cavern_h2_potential>",
         fig=report(
-            "results/{shapes}/salt_cavern_h2_potential.png",
+            "<results>/{shapes}/salt_cavern_h2_potential.png",
             caption="../report/cluster_salt_cavern_h2_potential.rst",
             category="Euro gas grid module",
         ),
     log:
-        "logs/{shapes}/cluster_salt_cavern_h2_potential.log",
+        "<logs>/{shapes}/cluster_salt_cavern_h2_potential.log",
     conda:
-        "../envs/euro_gas_grid.yaml"
+        "../envs/euro-gas-grid.yaml"
     script:
         "../scripts/cluster_salt_cavern_h2_potential.py"

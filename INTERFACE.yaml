@@ -1,14 +1,33 @@
 # Module Input-Output structure for automated doc. generation
-resources:
-  user:
-    "{shapes}/shapes.parquet": |
-      Region geometries in parquet format.
-      These should conform to the schema defined in https://github.com/calliope-project/module_geo_boundaries/.
-results:
-  "{shapes}/hubs.parquet": geoparquet describing hub node details and thresholds (Points).
-  "{shapes}/nodes.parquet": geoparquet describing aggregated nodes (Points).
-  "{shapes}/pipelines.parquet": geoparquet describing aggregated pipelines capacity (LineStrings).
-  "{shapes}/salt_cavern_h2_potential.parquet": parquet file describing aggregated salt cavern storage capacity.
-
+pathvars:
+  snakemake_defaults:
+    logs:
+      default: "<logs>"
+      description: location of rule log files.
+    resources:
+      default: "<resources>"
+      description: "location of module resource files."
+    results:
+      default: "<results>"
+      description: "location of module results."
+  user_resources:
+    user_shapes:
+      default: "<resources>/user/{shapes}/shapes.parquet"
+      description: |
+        Region geometries in parquet format.
+        These should conform to the schema defined in https://github.com/modelblocks-org/module_geo_boundaries/.
+  results:
+    hubs:
+      default: "<results>/{shapes}/hubs.parquet"
+      description: geoparquet describing aggregated hub node details and thresholds (Points).
+    nodes:
+      default: "<results>/{shapes}/nodes.parquet"
+      description: geoparquet describing aggregated nodes (Points).
+    pipelines:
+      default: "<results>/{shapes}/pipelines.parquet"
+      description: geoparquet describing aggregated pipelines capacity (LineStrings).
+    salt_cavern_h2_potential:
+      default: "<results>/{shapes}/salt_cavern_h2_potential.parquet"
+      description: parquet file describing aggregated salt cavern storage capacity.
 wildcards:
   shapes: name of the provided shapefile case.

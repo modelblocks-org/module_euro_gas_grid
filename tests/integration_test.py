@@ -1,7 +1,7 @@
-"""Set of standard clio tests.
+"""Set of standard Modelblocks tests.
 
-DO NOT MANUALLY MODIFY THIS FILE!
-It should be updated through our templating functions.
+PLEASE ENSURE THIS SET OF MINIMAL TESTS WORKS BEFORE PUBLISHING YOUR MODULE.
+Contents may be updated in future template updates.
 """
 
 import shutil
@@ -26,7 +26,7 @@ def integration_path(user_path: Path, module_path: Path):
         shutil.rmtree(
             integration_dir / "results/", ignore_errors=True
         )  # clean everything
-    user_integ_dir = integration_dir / "results/integration_test/resources/user/"
+    user_integ_dir = integration_dir / "resources/inputs/"
     files_to_copy = ["BALK/shapes.parquet"]
     for file in files_to_copy:
         destination_file = Path(user_integ_dir / file)
