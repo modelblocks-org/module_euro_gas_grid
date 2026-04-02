@@ -2,16 +2,66 @@
 
 A module to cluster European gas networks into any resolution.
 
-## About this module
+<!-- Place an attractive image of module outputs here -->
+<p align="center">
+  <img src="./figures/pipelines.jpeg" width="66%">
+</p>
+
+## About
 <!-- Please do not modify this templated section -->
 
-This is a modular `snakemake` workflow built for [Modelblocks](https://www.modelblocks.org/) data modules.
+This is a modular `snakemake` workflow created as part of the [Modelblocks project](https://www.modelblocks.org/). It can be imported directly into any `snakemake` workflow.
 
-This module can be imported directly into any `snakemake` workflow.
-For more information, please consult:
-- The Modelblocks [documentation](https://modelblocks.readthedocs.io/en/latest/).
-- The integration example in this repository (`tests/integration/Snakefile`).
-- The `snakemake` [documentation on modularisation](https://snakemake.readthedocs.io/en/stable/snakefiles/modularization.html).
+For more information, please consult the Modelblocks [documentation](https://modelblocks.readthedocs.io/en/latest/),
+the [integration example](./tests/integration/Snakefile),
+and the `snakemake` [documentation](https://snakemake.readthedocs.io/en/stable/snakefiles/modularization.html).
+
+## Overview
+<!-- Please describe the processing stages of this module here -->
+
+The analysis of the module is structured as follows:
+
+<p align="center">
+  <img src="./figures/rulegraph.png" width="50%">
+</p>
+
+1. Generic data necessary for processing is downloaded and stored locally.
+2. The SciGrid-Gas dataset is processed to compute per-pipeline capacity (in $MW$). If configured, several imputations may be applied to counteract overestimations, based on [PyPSA-Eur](https://github.com/PyPSA/pypsa-eur) algorithms (see source code for licenses and detailed attribution).
+3. Geospatial input polygons ('shapes' provided by the user) are used as basis to aggregate both gas pipelines and salt cavern $H_2$ storage.
+
+
+4. Gas pipelines are converted into a network graph and then aggregated into three types of node using a [maximum flow algorithm](https://networkx.org/documentation/networkx-3.6/reference/algorithms/generated/networkx.algorithms.flow.preflow_push.html).
+
+    - shape terminals: the centroids of the provided shapes.
+    - outside terminals: the centroids of adjacent 'external' nations (at national resolution based on Natural Earth Admin 0 regions).
+    Useful if you wish to estimate import limits in your model.
+    - hubs: aggregated offshore pipeline components that connect to $\ge 3$ terminals. A maximum per-hub throughput capacity limit is provided.
+<p align="center">
+  <img src="./figures/aggregated.png" width="50%">
+</p>
+
+5. Salt caverns are grouped into three types: onshore, nearshore and offshore (matching categorisation in Caglayan et. al). A total sum is also provided.
+<p align="center">
+  <img src="./figures/salt_cavern_h2_potential_small.png" width="50%">
+</p>
+
+
+
+## Configuration
+<!-- Please describe how to configure this module below -->
+
+Please consult the configuration [README](./config/README.md) and the [configuration example](./config/config.yaml) for a general overview on the configuration options of this module.
+
+## Input / output structure
+<!-- Please describe input / output file placement below -->
+
+As input, all you need to provide is a Geoparquet file with the polygons (i.e., 'shapes') to aggregate capacities into. This file should follow the schema provided by the [geo-boundaries module](https://github.com/modelblocks-org/module_geo_boundaries/).
+
+Outputs for each processed input shapes file are:
+- For the gas network, files describing the network topology in the form of hubs, nodes, and pipelines (edges).
+- For salt caverns, a file describing the storage potential of each region.
+
+Please consult the [interface file](./INTERFACE.yaml) for more information.
 
 ## Development
 <!-- Please do not modify this templated section -->
@@ -39,51 +89,7 @@ cd tests/integration/  # navigate to the integration example
 snakemake --use-conda --cores 2  # run the workflow!
 ```
 
-## Documentation
-
-### Overview
-<!-- Please describe the processing stages of this module here -->
-The analysis of the module is structured as follows:
-
-
-<img src="./figures/rulegraph.png" width="400" margin="auto">
-
-1. Generic data necessary for processing is downloaded and stored locally.
-2. The SciGrid-Gas dataset is processed to compute per-pipeline capacity (in $MW$). If configured, several imputations may be applied to counteract overestimations, based on [PyPSA-Eur](https://github.com/PyPSA/pypsa-eur) algorithms.
-
-    <img src="./figures/pipelines.jpeg" width="500" margin="auto">
-
-3. Geospatial input polygons ('shapes' provided by the user) are used as basis to aggregate both gas pipelines and salt cavern $H_2$ storage.
-4. Gas pipelines are converted into a network graph and then aggregated into three types of node using a [maximum flow algorithm](https://networkx.org/documentation/networkx-3.6/reference/algorithms/generated/networkx.algorithms.flow.preflow_push.html).
-    - shape terminals: the centroids of the provided shapes.
-    - outside terminals: the centroids of adjacent 'external' nations (at national resolution based on Natural Earth Admin 0 regions).
-    Useful if you wish to estimate import limits in your model.
-    - hubs: aggregated offshore pipeline components that connect to >= 3 terminals. A maximum per-hub throughput capacity limit is provided.
-
-    <img src="./figures/aggregated.png" width="350" margin="auto">
-
-5. Salt caverns are grouped into three types: onshore, nearshore and offshore. A total sum is also provided.
-
-    <img src="./figures/salt_cavern_h2_potential_small.png" width="500" margin="auto">
-
-
-### Configuration
-<!-- Feel free to describe how to configure this module below -->
-
-Please consult the configuration [README](./config/README.md) and the [configuration example](./config/config.yaml) for a general overview on the configuration options of this module.
-
-### Input / output structure
-<!-- Feel free to describe input / output file placement below -->
-
-As input, all you need to provide is a Geoparquet file with the polygons (i.e., 'shapes') to aggregate capacities into. This file should follow the schema provided by the [geo-boundaries module](https://github.com/modelblocks-org/module_geo_boundaries/).
-
-Outputs for each processed input shapes file are:
-- For the gas network, files describing the network topology in the form of hubs, nodes, and pipelines (edges).
-- For salt caverns, a file describing the storage potential of each region.
-
-Please consult the [interface file](./INTERFACE.yaml) for more information.
-
-### References
+## References
 <!-- Please provide thorough referencing below -->
 
 This module is based on the following research and datasets:

@@ -43,15 +43,18 @@ def test_interface_file(module_path):
 @pytest.mark.parametrize(
     "file",
     [
-        "CITATION.cff",
         "AUTHORS",
+        "CITATION.cff",
         "INTERFACE.yaml",
         "LICENSE",
+        "README.md",
+        "config/config.yaml",
+        "workflow/internal/config.schema.yaml",
         "tests/integration/Snakefile",
     ],
 )
 def test_standard_file_existance(module_path, file):
-    """Check that a minimal set of files used for clio automatic docs are present."""
+    """Check that a minimal set of files used for documentation are present."""
     assert Path(module_path / file).exists()
 
 
