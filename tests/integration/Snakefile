@@ -11,10 +11,6 @@ with open(workflow.source_path("../../config/config.yaml"), "r") as f:
 # `config:` specifies the module configuration.
 # `pathvars:` helps you re-wire where the module places files.
 module module_euro_gas_grid:
-    snakefile:
-        "../../workflow/Snakefile"
-    config:
-        module_config["module_euro_gas_grid"]
     pathvars:
         # Redirect specific user resources (inputs)
         user_shapes="resources/inputs/{shapes}/shapes.parquet",
@@ -27,6 +23,10 @@ module module_euro_gas_grid:
         logs="resources/euro_gas_grid/logs",
         resources="resources/euro_gas_grid/resources",
         results="resources/euro_gas_grid/results",
+    snakefile:
+        "../../workflow/Snakefile"
+    config:
+        module_config["module_euro_gas_grid"]
 
 
 # rename all module rules with a prefix, to avoid naming conflicts.
@@ -38,11 +38,11 @@ FILES = ["hubs", "nodes", "pipelines", "salt_cavern_h2_potential"]
 
 # Request something from the module
 rule all:
-    message:
-        "A generic test case for your module."
     default_target: True
     input:
         expand(
             "results/outputs/BALK/{file}.parquet",
             file=FILES,
         ),
+    message:
+        "A generic test case for your module."
