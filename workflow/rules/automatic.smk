@@ -19,26 +19,22 @@ wildcard_constraints:
 
 
 rule download_sci_grid:
-    message:
-        "Downloading gas infrastructure data from SciGRID_gas IGGIELGN."
-    params:
-        url=internal["resources"]["automatic"]["scigrid_gas"],
-    log:
-        "<logs>/automatic/download_sci_grid.log",
     output:
         zipfile="<resources>/automatic/gas_grid.zip",
+    log:
+        "<logs>/automatic/download_sci_grid.log",
     localrule: True
     conda:
         "../envs/shell.yaml"
+    params:
+        url=internal["resources"]["automatic"]["scigrid_gas"],
+    message:
+        "Downloading gas infrastructure data from SciGRID_gas IGGIELGN."
     shell:
         """curl -sSLo {output} {params.url}"""
 
 
 rule unzip_scigrid_dataset:
-    message:
-        "Unzipping SciGrid '{wildcards.scigrid_gas}'."
-    params:
-        file=lambda wc: f"data/IGGIELGNC3_{wc.scigrid_gas}.geojson",
     input:
         zip_file=rules.download_sci_grid.output.zipfile,
     output:
@@ -47,37 +43,41 @@ rule unzip_scigrid_dataset:
         "<logs>/automatic/unzip_scigrid_dataset_{scigrid_gas}.log",
     conda:
         "../envs/euro-gas-grid.yaml"
+    params:
+        file=lambda wc: f"data/IGGIELGNC3_{wc.scigrid_gas}.geojson",
+    message:
+        "Unzipping SciGrid '{wildcards.scigrid_gas}'."
     script:
         "../scripts/unzip.py"
 
 
 rule download_salt_cavern_storage:
-    message:
-        "Downloading H2 salt cavern storage dataset by Caglayan et al (2019)."
-    params:
-        url=internal["resources"]["automatic"]["salt_cavern_h2"],
-    log:
-        "<logs>/automatic/download_salt_cavern_storage.log",
     output:
         caverns="<resources>/automatic/salt_cavern_h2.parquet",
+    log:
+        "<logs>/automatic/download_salt_cavern_storage.log",
     localrule: True
     conda:
         "../envs/shell.yaml"
+    params:
+        url=internal["resources"]["automatic"]["salt_cavern_h2"],
+    message:
+        "Downloading H2 salt cavern storage dataset by Caglayan et al (2019)."
     shell:
         """curl -sSLo {output} {params.url}"""
 
 
 rule download_natural_earth:
-    message:
-        "Downloading '{wildcards.nat_earth}' from Natural Earth data (10m)."
-    params:
-        url=lambda wc: internal["resources"]["automatic"]["natural_earth"][wc.nat_earth],
-    log:
-        "<logs>/automatic/download_{nat_earth}.log",
     output:
         zipfile="<resources>/automatic/{nat_earth}.zip",
+    log:
+        "<logs>/automatic/download_{nat_earth}.log",
     localrule: True
     conda:
         "../envs/shell.yaml"
+    params:
+        url=lambda wc: internal["resources"]["automatic"]["natural_earth"][wc.nat_earth],
+    message:
+        "Downloading '{wildcards.nat_earth}' from Natural Earth data (10m)."
     shell:
         """curl -sSLo {output} {params.url}"""

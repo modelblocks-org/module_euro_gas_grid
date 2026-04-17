@@ -2,8 +2,6 @@
 
 
 rule prepare_countries:
-    message:
-        "Preparing country data."
     input:
         raw_countries="<resources>/automatic/countries.zip",
     output:
@@ -13,16 +11,13 @@ rule prepare_countries:
         "<logs>/prepare_countries.log",
     conda:
         "../envs/euro-gas-grid.yaml"
+    message:
+        "Preparing country data."
     script:
         "../scripts/prepare_countries.py"
 
 
 rule prepare_pipelines:
-    message:
-        "Harmonising SciGRID pipelines."
-    params:
-        imputation=config.get("imputation", {}),
-        projected_crs=config["crs"]["projected"],
     input:
         raw_pipelines="<resources>/automatic/scigrid_gas/PipeSegments.geojson",
         raw_nodes="<resources>/automatic/scigrid_gas/Nodes.geojson",
@@ -39,5 +34,10 @@ rule prepare_pipelines:
         "<logs>/prepare_pipelines.log",
     conda:
         "../envs/euro-gas-grid.yaml"
+    params:
+        imputation=config.get("imputation", {}),
+        projected_crs=config["crs"]["projected"],
+    message:
+        "Harmonising SciGRID pipelines."
     script:
         "../scripts/prepare_pipelines.py"
