@@ -1,6 +1,6 @@
-# Module Euro Gas Grid
+# Euro Gas Grid Module
 
-A module to cluster European gas networks into any resolution.
+A module to cluster European gas networks from SciGRID_gas into any resolution.
 
 <!-- Place an attractive image of module outputs here -->
 <p align="center">
@@ -75,6 +75,21 @@ cd module_euro_gas_grid
 pixi install --all
 ```
 
+Please be aware that this is a multi-environment project (see [pixi.toml](./pixi.toml) for details).
+- `default`: used for development and integration testing.
+Because it contains `Snakemake`, `conda` and `pytest` as dependencies it **should not be used** in `Snakemake` rules.
+- `module`: contains minimal dependencies used in `Snakemake` rules.
+If modified, be sure to export it to `Snakemake` so it can be recreated by module users:
+
+```shell
+# create module.yaml and conda-spec pin files in workflow/envs/
+pixi run export-snakemake-env module
+```
+
+
+## Testing
+<!-- Please do not modify this templated section -->
+
 For testing, simply run:
 
 ```shell
@@ -106,3 +121,16 @@ Natural Earth Admin 0 - Countries at 10m resolution. <https://www.naturalearthda
     - Hofmann, F., Tries, C., Neumann, F. et al. H2 and CO2 network strategies for the European energy system. Nat Energy 10, 715–724 (2025). <https://doi.org/10.1038/s41560-025-01752-6>.
 - **Shape schema definition:**
 Ruiz Manuel, I. Modelblocks - module_geo_boundaries. Computer software. <https://github.com/modelblocks-org/module_geo_boundaries/>.
+
+## Contributors ✨
+
+Thanks goes to these wonderful people, sorted alphabetically ([emoji key](https://allcontributors.org/en/reference/emoji-key/)):
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!

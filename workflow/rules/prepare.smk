@@ -10,7 +10,7 @@ rule prepare_countries:
     log:
         "<logs>/prepare_countries.log",
     conda:
-        "../envs/euro-gas-grid.yaml"
+        "../envs/module.yaml"
     message:
         "Preparing country data."
     script:
@@ -33,7 +33,7 @@ rule prepare_pipelines:
     log:
         "<logs>/prepare_pipelines.log",
     conda:
-        "../envs/euro-gas-grid.yaml"
+        "../envs/module.yaml"
     params:
         imputation=config.get("imputation", {}),
         projected_crs=config["crs"]["projected"],
