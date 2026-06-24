@@ -25,13 +25,15 @@ rule download_sci_grid:
         "<logs>/automatic/download_sci_grid.log",
     localrule: True
     conda:
-        "../envs/shell.yaml"
+        "../envs/module.yaml"
     params:
         url=internal["resources"]["automatic"]["scigrid_gas"],
     message:
         "Downloading gas infrastructure data from SciGRID_gas IGGIELGN."
     shell:
-        """curl -sSLo {output} {params.url}"""
+        """
+        curl -sSLo {output} {params.url}
+        """
 
 
 rule unzip_scigrid_dataset:
@@ -42,7 +44,7 @@ rule unzip_scigrid_dataset:
     log:
         "<logs>/automatic/unzip_scigrid_dataset_{scigrid_gas}.log",
     conda:
-        "../envs/euro-gas-grid.yaml"
+        "../envs/module.yaml"
     params:
         file=lambda wc: f"data/IGGIELGNC3_{wc.scigrid_gas}.geojson",
     message:
@@ -58,13 +60,15 @@ rule download_salt_cavern_storage:
         "<logs>/automatic/download_salt_cavern_storage.log",
     localrule: True
     conda:
-        "../envs/shell.yaml"
+        "../envs/module.yaml"
     params:
         url=internal["resources"]["automatic"]["salt_cavern_h2"],
     message:
         "Downloading H2 salt cavern storage dataset by Caglayan et al (2019)."
     shell:
-        """curl -sSLo {output} {params.url}"""
+        """
+        curl -sSLo {output} {params.url}
+        """
 
 
 rule download_natural_earth:
@@ -74,10 +78,12 @@ rule download_natural_earth:
         "<logs>/automatic/download_{nat_earth}.log",
     localrule: True
     conda:
-        "../envs/shell.yaml"
+        "../envs/module.yaml"
     params:
         url=lambda wc: internal["resources"]["automatic"]["natural_earth"][wc.nat_earth],
     message:
         "Downloading '{wildcards.nat_earth}' from Natural Earth data (10m)."
     shell:
-        """curl -sSLo {output} {params.url}"""
+        """
+        curl -sSLo {output} {params.url}
+        """

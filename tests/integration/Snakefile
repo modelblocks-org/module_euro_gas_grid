@@ -20,9 +20,9 @@ module module_euro_gas_grid:
         pipelines="results/outputs/{shapes}/pipelines.parquet",
         salt_cavern_h2_potential="results/outputs/{shapes}/salt_cavern_h2_potential.parquet",
         # Redirect module intermediate files
-        logs="resources/euro_gas_grid/logs",
-        resources="resources/euro_gas_grid/resources",
-        results="resources/euro_gas_grid/results",
+        logs="resources/module/logs",
+        resources="resources/module/resources",
+        results="resources/module/results",
     snakefile:
         "../../workflow/Snakefile"
     config:

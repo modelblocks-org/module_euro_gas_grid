@@ -18,7 +18,7 @@ rule cluster_gas_network:
     log:
         "<logs>/{shapes}/cluster_gas_network.log",
     conda:
-        "../envs/euro-gas-grid.yaml"
+        "../envs/module.yaml"
     params:
         projected_crs=config["crs"]["projected"],
         replace_sovereign=config["clustering"]["pipelines"].get("replace_sovereign", {}),
@@ -42,7 +42,7 @@ rule cluster_salt_cavern_h2_potential:
     log:
         "<logs>/{shapes}/cluster_salt_cavern_h2_potential.log",
     conda:
-        "../envs/euro-gas-grid.yaml"
+        "../envs/module.yaml"
     params:
         projected_crs=config["crs"]["projected"],
         min_gwh_tolerance=config["clustering"]["salt_caverns"]["min_gwh"],
