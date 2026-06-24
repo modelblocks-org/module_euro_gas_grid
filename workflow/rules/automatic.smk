@@ -31,7 +31,9 @@ rule download_sci_grid:
     message:
         "Downloading gas infrastructure data from SciGRID_gas IGGIELGN."
     shell:
-        """curl -sSLo {output} {params.url}"""
+        """
+        curl -sSLo {output} {params.url}
+        """
 
 
 rule unzip_scigrid_dataset:
@@ -64,7 +66,9 @@ rule download_salt_cavern_storage:
     message:
         "Downloading H2 salt cavern storage dataset by Caglayan et al (2019)."
     shell:
-        """curl -sSLo {output} {params.url}"""
+        """
+        curl -sSLo {output} {params.url}
+        """
 
 
 rule download_natural_earth:
@@ -80,4 +84,6 @@ rule download_natural_earth:
     message:
         "Downloading '{wildcards.nat_earth}' from Natural Earth data (10m)."
     shell:
-        """curl -sSLo {output} {params.url}"""
+        """
+        curl -sSLo {output} {params.url}
+        """
