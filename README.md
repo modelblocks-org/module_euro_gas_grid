@@ -1,4 +1,4 @@
-# Euro Gas Grid Module
+# European Gas Grid
 
 A module to cluster European gas networks from SciGRID_gas into any resolution.
 
