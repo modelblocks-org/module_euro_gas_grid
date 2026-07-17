@@ -132,6 +132,7 @@ Thanks goes to these wonderful people, sorted alphabetically ([emoji key](https:
 <table>
   <tbody>
     <tr>
+      <td align="center" valign="top" width="14.28%"><a href="http://www.flombardi.org"><img src="https://avatars.githubusercontent.com/u/26432077?v=4?s=100" width="100px;" alt="Francesco Lombardi"/><br /><sub><b>Francesco Lombardi</b></sub></a><br /><a href="#ideas-FLomb" title="Ideas, Planning, & Feedback">🤔</a> <a href="#mentoring-FLomb" title="Mentoring">🧑‍🏫</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://orcid.org/0000-0003-2288-6423"><img src="https://avatars.githubusercontent.com/u/72193617?v=4?s=100" width="100px;" alt="Ivan Ruiz Manuel"/><br /><sub><b>Ivan Ruiz Manuel</b></sub></a><br /><a href="https://github.com/modelblocks-org/module_euro_gas_grid/commits?author=irm-codebase" title="Code">💻</a> <a href="#ideas-irm-codebase" title="Ideas, Planning, & Feedback">🤔</a> <a href="https://github.com/modelblocks-org/module_euro_gas_grid/commits?author=irm-codebase" title="Documentation">📖</a></td>
     </tr>
   </tbody>
