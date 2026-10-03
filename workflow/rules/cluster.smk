@@ -50,3 +50,26 @@ rule cluster_salt_cavern_h2_potential:
         "Clustering of salt cavern H2 storage to {wildcards.shapes}."
     script:
         "../scripts/cluster_salt_cavern_h2_potential.py"
+
+
+rule cluster_gas_storage:
+    input:
+        locations=rules.prepare_gas_storage.output.storage,
+        shapes="<user_shapes>",
+    output:
+        capacities="<gas_storage>",
+        fig=report(
+            "<results>/{shapes}/gas_storage.png",
+            caption="../report/cluster_gas_storage.rst",
+            category="Euro gas grid module",
+        ),
+    log:
+        "<logs>/{shapes}/cluster_gas_storage.log",
+    conda:
+        "../envs/module.yaml"
+    params:
+        projected_crs=config["crs"]["projected"],
+    message:
+        "Clustering existing gas storage to {wildcards.shapes}."
+    script:
+        "../scripts/cluster_gas_storage.py"

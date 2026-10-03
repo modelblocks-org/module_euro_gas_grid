@@ -18,6 +18,7 @@ module module_euro_gas_grid:
         hubs="results/outputs/{shapes}/hubs.parquet",
         nodes="results/outputs/{shapes}/nodes.parquet",
         pipelines="results/outputs/{shapes}/pipelines.parquet",
+        gas_storage="results/outputs/{shapes}/gas_storage.parquet",
         salt_cavern_h2_potential="results/outputs/{shapes}/salt_cavern_h2_potential.parquet",
         # Redirect module intermediate files
         logs="resources/module/logs",
@@ -33,7 +34,13 @@ module module_euro_gas_grid:
 use rule * from module_euro_gas_grid as module_euro_gas_grid_*
 
 
-FILES = ["hubs", "nodes", "pipelines", "salt_cavern_h2_potential"]
+FILES = [
+    "gas_storage",
+    "hubs",
+    "nodes",
+    "pipelines",
+    "salt_cavern_h2_potential",
+]
 
 
 # Request something from the module

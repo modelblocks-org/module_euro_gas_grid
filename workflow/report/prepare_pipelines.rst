@@ -1,1 +1,1 @@
-Prepared SciGrid-Gas pipelines.
+Prepared SciGrid_Gas pipelines.

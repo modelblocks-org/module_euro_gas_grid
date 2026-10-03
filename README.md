@@ -26,11 +26,10 @@ The analysis of the module is structured as follows:
 </p>
 
 1. Generic data necessary for processing is downloaded and stored locally.
-2. The SciGrid-Gas dataset is processed to compute per-pipeline capacity (in $MW$). If configured, several imputations may be applied to counteract overestimations, based on [PyPSA-Eur](https://github.com/PyPSA/pypsa-eur) algorithms (see source code for licenses and detailed attribution).
-3. Geospatial input polygons ('shapes' provided by the user) are used as basis to aggregate both gas pipelines and salt cavern $H_2$ storage.
+2. The SciGrid_Gas dataset is processed to compute pipeline capacity (in $MW$). If configured, several imputations may be applied to counteract overestimations caused by the SciGrid_Gas methodology, based on [PyPSA-Eur](https://github.com/PyPSA/pypsa-eur) algorithms (see source code for licenses and detailed attribution).
 
 
-4. Gas pipelines are converted into a network graph and then aggregated into three types of node using a [maximum flow algorithm](https://networkx.org/documentation/networkx-3.6/reference/algorithms/generated/networkx.algorithms.flow.preflow_push.html).
+3. Gas pipelines are converted into a network graph and then aggregated into three types of node using a [maximum flow algorithm](https://networkx.org/documentation/networkx-3.6/reference/algorithms/generated/networkx.algorithms.flow.preflow_push.html).
 
     - shape terminals: the centroids of the provided shapes.
     - outside terminals: the centroids of adjacent 'external' nations (at national resolution based on Natural Earth Admin 0 regions).
@@ -40,6 +39,7 @@ The analysis of the module is structured as follows:
   <img src="./figures/aggregated.png" width="50%">
 </p>
 
+4. Existing SciGrid_Gas storage is aggregated using working- and cushion-gas volumes. Facilities outside the exact shape extent are excluded.
 5. Salt caverns are grouped into three types: onshore, nearshore and offshore (matching categorisation in Caglayan et. al). A total sum is also provided.
 <p align="center">
   <img src="./figures/salt_cavern_h2_potential_small.png" width="50%">
@@ -59,6 +59,7 @@ As input, all you need to provide is a Geoparquet file with the polygons (i.e., 
 
 Outputs for each processed input shapes file are:
 - For the gas network, files describing the network topology in the form of hubs, nodes, and pipelines (edges).
+- For existing gas storage, a separate file describing working- and cushion-gas capacity per region.
 - For salt caverns, a file describing the storage potential of each region.
 
 Please consult the [interface file](./INTERFACE.yaml) for more information.

@@ -20,7 +20,11 @@ from pathlib import Path
 
 import pytest
 
-TEST_PNG = ["pipelines", "salt_cavern_h2_potential"]
+TEST_PNG = [
+    "gas_storage",
+    "pipelines",
+    "salt_cavern_h2_potential",
+]
 
 
 def build_request_all(shape: str):
@@ -34,7 +38,7 @@ def test_full_run(user_path: Path, shape: str):
     request = build_request_all(shape)
 
     assert subprocess.run(
-        f"snakemake --use-conda --cores 4 --forceall {request}",
+        f"snakemake --use-conda --cores 4 --forceall --rerun-incomplete {request}",
         shell=True,
         check=True,
         cwd=user_path.parent.parent,

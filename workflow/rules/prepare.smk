@@ -41,3 +41,18 @@ rule prepare_pipelines:
         "Harmonising SciGRID pipelines."
     script:
         "../scripts/prepare_pipelines.py"
+
+
+rule prepare_gas_storage:
+    input:
+        storage="<resources>/automatic/scigrid_gas/Storages.geojson",
+    output:
+        storage="<resources>/automatic/gas_storage.parquet",
+    log:
+        "<logs>/prepare_gas_storage.log",
+    conda:
+        "../envs/module.yaml"
+    message:
+        "Preparing existing gas storage locations."
+    script:
+        "../scripts/prepare_gas_storage.py"

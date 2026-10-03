@@ -15,6 +15,7 @@ pathvars:
     hubs="<results>/{shapes}/hubs.parquet",
     nodes="<results>/{shapes}/nodes.parquet",
     pipelines="<results>/{shapes}/pipelines.parquet",
+    gas_storage="<results>/{shapes}/gas_storage.parquet",
     salt_cavern_h2_potential="<results>/{shapes}/salt_cavern_h2_potential.parquet",
 
 

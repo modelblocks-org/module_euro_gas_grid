@@ -76,6 +76,7 @@ class NodeSchema(pa.DataFrameModel):
         coerce = True
         strict = "filter"
 
+    # TODO: Replace positional node IDs with the unique raw SciGRID node IDs.
     node_id: Series[int] = pa.Field(unique=True)
     "Individual node ID."
     degree: Series[int] = pa.Field(gt=0)
@@ -143,3 +144,44 @@ class H2Potential(pa.DataFrameModel):
     """Onshore salt cavern potential."""
     total_gwh: Series[float] = pa.Field(ge=0)
     """Aggregate salt cavern potential."""
+
+
+class GasStorageNodeSchema(pa.DataFrameModel):
+    """Internal point locations for existing gas storage."""
+
+    class Config:
+        coerce = True
+        strict = True
+
+    storage_id: Series[str] = pa.Field(unique=True)
+    """Namespaced source identifier."""
+    name: Series[str] = pa.Field(nullable=True)
+    """Facility name, if given."""
+    facility_type: Series[str] = pa.Field(eq="storage")
+    """Facility type."""
+    storage_working_gwh: Series[float] = pa.Field(gt=0)
+    """Usable working-gas energy capacity."""
+    storage_cushion_gwh: Series[float] = pa.Field(gt=0, nullable=True)
+    """Cushion-gas energy capacity."""
+    geometry: GeoSeries
+    """Facility point."""
+
+    @pa.check("geometry")
+    def check_geometries(cls, geom):
+        """Ensure geometries are points."""
+        return not {"Point"} ^ set(geom.geom_type.unique())
+
+
+class GasStorageSchema(pa.DataFrameModel):
+    """Shape-level existing gas storage capacities."""
+
+    class Config:
+        coerce = True
+        strict = True
+
+    shape_id: Series[str] = pa.Field(unique=True)
+    """User-provided shape identifier."""
+    storage_working_gwh: Series[float] = pa.Field(gt=0, nullable=True)
+    """Usable working-gas energy capacity."""
+    storage_cushion_gwh: Series[float] = pa.Field(gt=0, nullable=True)
+    """Cushion-gas energy capacity."""

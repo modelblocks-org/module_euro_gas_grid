@@ -56,7 +56,7 @@ properties:
             minimum: 0
 
   imputation:
-    description: Imputation options while processing the SciGrid-Gas dataset.
+    description: Imputation options while processing the SciGrid_Gas dataset.
     type: object
     additionalProperties: false
     properties:
@@ -74,9 +74,9 @@ properties:
         minimum: 0
       capacity_correction_threshold:
         description: |
-          If SciGrid-Gas derived capacities differ from the Hydrogen Backbone piecewise estimate by this threshold,
+          If SciGrid_Gas derived capacities differ from the Hydrogen Backbone piecewise estimate by this threshold,
           replace them with the Hydrogen Backbone estimate.
-          E.g.: if 6 is set, and the SciGrid-Gas value is 6 times above or below the piecewise value, replace.
+          E.g.: if 6 is set, and the SciGrid_Gas value is 6 times above or below the piecewise value, replace.
         type: number
         minimum: 0
       bidirectional_below_distance:
@@ -86,7 +86,7 @@ properties:
         minimum: 0
       excluded_pipeline_ids:
         description: |
-          Each SciGrid-Gas pipeline is assigned an ID in a deterministic way.
+          Each SciGrid_Gas pipeline is assigned an ID in a deterministic way.
           Individual lines can be removed using this option. Useful to remove damaged or defunct lines.
         type: array
         items:
