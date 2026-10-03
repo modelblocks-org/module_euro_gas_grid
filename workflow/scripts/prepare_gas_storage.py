@@ -44,5 +44,5 @@ def main():
 
 if __name__ == "__main__":
     # TODO: add buffering=1 to all calls.
-    sys.stderr = open(snakemake.log[0], "w")
+    sys.stderr = open(snakemake.log[0], "w", buffering=1)
     main()

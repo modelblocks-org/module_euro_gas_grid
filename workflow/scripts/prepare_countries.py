@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 
 if TYPE_CHECKING:
     snakemake: Any
-sys.stderr = open(snakemake.log[0], "w")
+sys.stderr = open(snakemake.log[0], "w", buffering=1)
 
 
 def plot(land_file: str, output_file: str):
