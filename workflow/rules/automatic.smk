@@ -36,21 +36,19 @@ rule download_sci_grid:
         """
 
 
-rule unzip_scigrid_dataset:
+rule unzip_scigrid:
     input:
-        zip_file=rules.download_sci_grid.output.zipfile,
+        rules.download_sci_grid.output.zipfile,
     output:
         pipelines="<resources>/automatic/scigrid_gas/{scigrid_gas}.geojson",
     log:
-        "<logs>/automatic/unzip_scigrid_dataset_{scigrid_gas}.log",
-    conda:
-        "../envs/module.yaml"
+        "<logs>/automatic/unzip_scigrid_{scigrid_gas}.log",
     params:
-        file=lambda wc: f"data/IGGIELGNC3_{wc.scigrid_gas}.geojson",
+        internal_paths=lambda wc: f"data/IGGIELGNC3_{wc.scigrid_gas}.geojson",
     message:
         "Unzipping SciGrid '{wildcards.scigrid_gas}'."
-    script:
-        "../scripts/unzip.py"
+    wrapper:
+        "v9.8.0/utils/libarchive/extract"
 
 
 rule download_salt_cavern_storage:

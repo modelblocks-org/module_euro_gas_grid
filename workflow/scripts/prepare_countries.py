@@ -11,7 +11,6 @@ from matplotlib import pyplot as plt
 
 if TYPE_CHECKING:
     snakemake: Any
-sys.stderr = open(snakemake.log[0], "w", buffering=1)
 
 
 def plot(land_file: str, output_file: str):
@@ -48,6 +47,7 @@ def prepare_countries(raw_file: str, output_file: str):
 
 
 if __name__ == "__main__":
+    sys.stderr = open(snakemake.log[0], "w", buffering=1)
     prepare_countries(
         raw_file=snakemake.input.raw_countries, output_file=snakemake.output.countries
     )
