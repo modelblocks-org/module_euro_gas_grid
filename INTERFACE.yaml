@@ -27,10 +27,10 @@ pathvars:
       description: geoparquet describing aggregated nodes (Points).
     pipelines:
       default: "<results>/{shapes}/pipelines.parquet"
-      description: geoparquet describing aggregated pipelines capacity (LineStrings).
+      description: geoparquet describing aggregated pipeline capacity on an LHV basis (LineStrings).
     gas_storage:
       default: "<results>/{shapes}/gas_storage.parquet"
-      description: existing working and cushion gas storage capacity per shape.
+      description: existing working and cushion gas storage capacity per shape on an LHV basis.
     salt_cavern_h2_potential:
       default: "<results>/{shapes}/salt_cavern_h2_potential.parquet"
       description: parquet file describing aggregated salt cavern storage capacity.

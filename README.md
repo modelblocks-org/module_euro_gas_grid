@@ -26,7 +26,7 @@ The analysis of the module is structured as follows:
 </p>
 
 1. Generic data necessary for processing is downloaded and stored locally.
-2. The SciGrid_Gas dataset is processed to compute pipeline capacity (in $MW$). If configured, several imputations may be applied to counteract overestimations caused by the SciGrid_Gas methodology, based on [PyPSA-Eur](https://github.com/PyPSA/pypsa-eur) algorithms (see source code for licenses and detailed attribution).
+2. The SciGrid_Gas dataset is processed to compute pipeline capacity (in $MW$). If configured, several pipeline imputations may be applied to counteract overestimations caused by the SciGrid_Gas methodology, based on [PyPSA-Eur](https://github.com/PyPSA/pypsa-eur) algorithms (see source code for licenses and detailed attribution).
 
 
 3. Gas pipelines are converted into a network graph and then aggregated into three types of node using a [maximum flow algorithm](https://networkx.org/documentation/networkx-3.6/reference/algorithms/generated/networkx.algorithms.flow.preflow_push.html).
@@ -39,7 +39,7 @@ The analysis of the module is structured as follows:
   <img src="./figures/aggregated.png" width="50%">
 </p>
 
-4. Existing SciGrid_Gas storage is aggregated using working- and cushion-gas volumes. Facilities outside the exact shape extent are excluded.
+4. Existing SciGrid_Gas storage is aggregated using working and cushion gas volumes. Facilities outside the exact shape extent are excluded.
 5. Salt caverns are grouped into three types: onshore, nearshore and offshore (matching categorisation in Caglayan et. al). A total sum is also provided.
 <p align="center">
   <img src="./figures/salt_cavern_h2_potential_small.png" width="50%">

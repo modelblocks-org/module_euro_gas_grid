@@ -35,7 +35,8 @@ rule prepare_pipelines:
     conda:
         "../envs/module.yaml"
     params:
-        imputation=config.get("imputation", {}),
+        gas_kwh_per_m3_lhv=config["imputation"]["gas_kwh_per_m3_lhv"],
+        imputation=config["imputation"]["pipelines"],
         projected_crs=config["crs"]["projected"],
     message:
         "Harmonising SciGRID pipelines."
@@ -52,6 +53,8 @@ rule prepare_gas_storage:
         "<logs>/prepare_gas_storage.log",
     conda:
         "../envs/module.yaml"
+    params:
+        gas_kwh_per_m3_lhv=config["imputation"]["gas_kwh_per_m3_lhv"],
     message:
         "Preparing existing gas storage locations."
     script:

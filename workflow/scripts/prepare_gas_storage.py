@@ -10,12 +10,8 @@ import pandas as pd
 if TYPE_CHECKING:
     snakemake: Any
 
-# Assumed gas GCV/HHV: 11.36 kWh/m³ equals 11.36 GWh/MCM.
-# TODO: Reconcile with this module's 10.5 kWh/m³ LHV flow basis.
-MCM_TO_GWH = 11.36
 
-
-def prepare_gas_storage(raw_file: str) -> gpd.GeoDataFrame:
+def prepare_gas_storage(raw_file: str, gas_kwh_per_m3_lhv: float) -> gpd.GeoDataFrame:
     """Normalize SciGRID storage points with working- and cushion-gas volumes."""
     raw = gpd.read_file(raw_file).reset_index(drop=True)
     params = pd.json_normalize(raw["param"])
@@ -28,8 +24,9 @@ def prepare_gas_storage(raw_file: str) -> gpd.GeoDataFrame:
             "storage_id": source_id,
             "name": raw["name"],
             "facility_type": "storage",
-            "storage_working_gwh": working_gas * MCM_TO_GWH,
-            "storage_cushion_gwh": cushion_gas * MCM_TO_GWH,
+            # kWh/m³ and GWh/MCM have the same numerical conversion factor.
+            "storage_working_gwh": working_gas * gas_kwh_per_m3_lhv,
+            "storage_cushion_gwh": cushion_gas * gas_kwh_per_m3_lhv,
         },
         geometry=raw.geometry,
         crs=raw.crs,
@@ -39,7 +36,9 @@ def prepare_gas_storage(raw_file: str) -> gpd.GeoDataFrame:
 
 def main():
     """Prepare and save gas storage locations."""
-    storage = prepare_gas_storage(snakemake.input.storage)
+    storage = prepare_gas_storage(
+        snakemake.input.storage, snakemake.params.gas_kwh_per_m3_lhv
+    )
     storage.to_parquet(snakemake.output.storage)
 
 

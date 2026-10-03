@@ -55,7 +55,7 @@ class PipelineSchema(pa.DataFrameModel):
     is_bidirectional: Series[bool]
     "Pipeline direction."
     capacity_mw: Series[float] = pa.Field(gt=0)
-    "Pipeline capacity in MW (nominal)."
+    "Pipeline capacity in MW on an LHV basis (nominal)."
     capacity_mw_method: Series[str]
     "Method used to calculate CH4 capacity."
     shape_id: Series[str] | None = pa.Field(nullable=True)
@@ -160,9 +160,9 @@ class GasStorageNodeSchema(pa.DataFrameModel):
     facility_type: Series[str] = pa.Field(eq="storage")
     """Facility type."""
     storage_working_gwh: Series[float] = pa.Field(gt=0)
-    """Usable working-gas energy capacity."""
+    """Usable working-gas energy capacity on an LHV basis."""
     storage_cushion_gwh: Series[float] = pa.Field(gt=0, nullable=True)
-    """Cushion-gas energy capacity."""
+    """Cushion-gas energy capacity on an LHV basis."""
     geometry: GeoSeries
     """Facility point."""
 
@@ -182,6 +182,6 @@ class GasStorageSchema(pa.DataFrameModel):
     shape_id: Series[str] = pa.Field(unique=True)
     """User-provided shape identifier."""
     storage_working_gwh: Series[float] = pa.Field(gt=0, nullable=True)
-    """Usable working-gas energy capacity."""
+    """Usable working-gas energy capacity on an LHV basis."""
     storage_cushion_gwh: Series[float] = pa.Field(gt=0, nullable=True)
-    """Cushion-gas energy capacity."""
+    """Cushion-gas energy capacity on an LHV basis."""
