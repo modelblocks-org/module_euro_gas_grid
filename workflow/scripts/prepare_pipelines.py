@@ -147,9 +147,6 @@ def match_pipes_to_nodes(
             f"Dropped {len(drop_ids)} pipeline(s) due to missing start/end node after pivot."
         )
 
-    pipes["start_node_id"] = pipes["start_node_id"].astype(int)
-    pipes["end_node_id"] = pipes["end_node_id"].astype(int)
-
     # Drop: self-loops
     loops = pipes["start_node_id"].eq(pipes["end_node_id"])
     if loops.any():
@@ -175,7 +172,7 @@ def initialise_nodes(
     raw = _utils.to_crs(gpd.read_file(nodes_file).reset_index(drop=True), proj_crs)
     countries = _utils.to_crs(gpd.read_parquet(countries_file), proj_crs)
     nodes = gpd.GeoDataFrame(
-        {"node_id": raw.index.to_numpy(dtype=int), "geometry": raw["geometry"]},
+        {"node_id": raw["id"], "geometry": raw["geometry"]},
         geometry="geometry",
         crs=raw.crs,
     )

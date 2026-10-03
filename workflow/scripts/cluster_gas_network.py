@@ -107,15 +107,15 @@ def build_capacity_digraph(
     cap_col: str = "capacity_mw",
     bidir_col: str = "is_bidirectional",
 ) -> nx.DiGraph:
-    """Directed capacity graph on node_id integers.
+    """Directed capacity graph on raw SciGRID node ID strings.
 
     - start_node_id -> end_node_id always.
     - if is_bidirectional==True, also include reverse arc with same capacity.
     - parallel arcs are summed.
     """
     df = pipelines.dropna(subset=["start_node_id", "end_node_id", cap_col]).copy()
-    df["u"] = df["start_node_id"].astype(int)
-    df["v"] = df["end_node_id"].astype(int)
+    df["u"] = df["start_node_id"]
+    df["v"] = df["end_node_id"]
     df["cap"] = df[cap_col].astype(float)
     df["bidir"] = df[bidir_col].astype(bool)
 
@@ -135,8 +135,8 @@ def build_capacity_digraph(
 
 
 def find_intermediary_components(
-    G: nx.DiGraph, inter_nodes: set[int]
-) -> list[set[int]]:
+    G: nx.DiGraph, inter_nodes: set[str]
+) -> list[set[str]]:
     """Undirected connected components of intermediary-only nodes.
 
     These are 'corridors' between terminals (i.e., nodes not in shapes or countries).
@@ -151,7 +151,7 @@ def find_intermediary_components(
 
 
 def build_corridor_subgraph(
-    G: nx.DiGraph, components: set[int], boundary_nodes: set[int]
+    G: nx.DiGraph, components: set[str], boundary_nodes: set[str]
 ) -> nx.DiGraph:
     """Subgraph induced by (union of component and boundary terminal-nodes).
 
@@ -179,7 +179,7 @@ def max_transfer(G: nx.DiGraph, source, sink) -> float:
     )
 
 
-def max_transfer_sets(G: nx.DiGraph, sources: set[int], sinks: set[int]) -> float:
+def max_transfer_sets(G: nx.DiGraph, sources: set[str], sinks: set[str]) -> float:
     """Max flow from a set of source nodes S to a *set* of sink nodes T.
 
     Implemented by adding a super-source -> S and T -> super-sink with INF capacity.
@@ -225,8 +225,8 @@ def build_trade_network_with_hubs(
     nodes_t = assign_terminals_to_nodes(nodes, shapes)
     term_pts = aggregate_terminals_to_points(nodes, shapes, nodes_t)
 
-    # Terminal keys are explicit (kind, id_as_str). Graph nodes remain node_id:int.
-    def term_key(n: int) -> tuple[str, str] | None:
+    # Terminal keys are explicit (kind, id_as_str). Graph nodes retain raw node IDs.
+    def term_key(n: str) -> tuple[str, str] | None:
         k = nodes_t.at[n, "term_kind"]
         if pd.isna(k):
             return None
@@ -262,11 +262,11 @@ def build_trade_network_with_hubs(
             link_rows.append((tu[1], tv[1], cap, "direct", pd.NA))
 
     # Corridor components (intermediary-only)
-    inter_nodes = set(nodes_t.index[nodes_t["term_kind"].isna()].astype(int))
+    inter_nodes = set(nodes_t.index[nodes_t["term_kind"].isna()])
     for corridor_id, comp in enumerate(find_intermediary_components(G, inter_nodes)):
         # touched terminals as keys + boundary node_ids per terminal
         touched: set[tuple[str, str]] = set()
-        boundary: dict[tuple[str, str], set[int]] = {}
+        boundary: dict[tuple[str, str], set[str]] = {}
 
         for n in comp:
             for m in itertools.chain(G.predecessors(n), G.successors(n)):
@@ -274,7 +274,7 @@ def build_trade_network_with_hubs(
                 if tk is None:
                     continue
                 touched.add(tk)
-                boundary.setdefault(tk, set()).add(int(m))
+                boundary.setdefault(tk, set()).add(m)
 
         if len(touched) < 2:
             continue  # skip cases with less than two touched terminals

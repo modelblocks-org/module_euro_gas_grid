@@ -180,7 +180,6 @@ def build_nodes_from_pipelines(pipelines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
     nodes = pd.concat([start, end], ignore_index=True)
     nodes = nodes.dropna(subset=["node_id"]).copy()
-    nodes["node_id"] = nodes["node_id"].astype(int)
 
     # ensure a node_id never maps to multiple distinct coordinates
     wkb = nodes.geometry.to_wkb()

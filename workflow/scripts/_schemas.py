@@ -38,10 +38,10 @@ class PipelineSchema(pa.DataFrameModel):
     "Pipeline name."
     etype: Series[str] = pa.Field(eq="pipeline")
     "Element type."
-    start_node_id: Series[int] | None
-    "Node identifier for pipe start point."
-    end_node_id: Series[int] | None
-    "Node identifier for pipe end point."
+    start_node_id: Series[str] | None
+    "Raw SciGRID node identifier for the pipeline start point."
+    end_node_id: Series[str] | None
+    "Raw SciGRID node identifier for the pipeline end point."
     diameter_mm: Series[float] = pa.Field(gt=0)
     "Pipeline diameter."
     diameter_method: Series[str]
@@ -76,9 +76,8 @@ class NodeSchema(pa.DataFrameModel):
         coerce = True
         strict = "filter"
 
-    # TODO: Replace positional node IDs with the unique raw SciGRID node IDs.
-    node_id: Series[int] = pa.Field(unique=True)
-    "Individual node ID."
+    node_id: Series[str] = pa.Field(unique=True)
+    "SciGRID node identifier."
     degree: Series[int] = pa.Field(gt=0)
     "Undirected graph degrees (i.e., number of connections)."
     in_degree: Series[int] = pa.Field(ge=0)
@@ -154,7 +153,7 @@ class GasStorageNodeSchema(pa.DataFrameModel):
         strict = True
 
     storage_id: Series[str] = pa.Field(unique=True)
-    """Namespaced source identifier."""
+    """SciGrid_gas storage identifier."""
     name: Series[str] = pa.Field(nullable=True)
     """Facility name, if given."""
     facility_type: Series[str] = pa.Field(eq="storage")
