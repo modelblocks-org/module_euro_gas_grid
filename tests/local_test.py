@@ -20,18 +20,12 @@ from pathlib import Path
 
 import pytest
 
-TEST_PNG = [
-    "gas_storage",
-    "pipelines",
-    "salt_cavern_h2_potential",
-]
+TEST_PNG = ["gas_storage", "pipelines", "salt_cavern_h2_potential"]
 
 
 def build_request_all(shape: str, scenario: str):
     """Construct a request for the given categories."""
-    return " ".join(
-        [f"results/{shape}/{scenario}/{file}.png" for file in TEST_PNG]
-    )
+    return " ".join([f"results/{shape}/{scenario}/{file}.png" for file in TEST_PNG])
 
 
 @pytest.mark.parametrize("scenario", ["default", "alternative"])
