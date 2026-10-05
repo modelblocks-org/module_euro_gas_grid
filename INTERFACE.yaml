@@ -20,19 +20,20 @@ pathvars:
         These should conform to the schema defined in https://github.com/modelblocks-org/module_geo_boundaries/.
   results:
     hubs:
-      default: "<results>/{shapes}/hubs.parquet"
+      default: "<results>/{shapes}/{scenario}/hubs.parquet"
       description: geoparquet describing aggregated hub node details and thresholds (Points).
     nodes:
-      default: "<results>/{shapes}/nodes.parquet"
+      default: "<results>/{shapes}/{scenario}/nodes.parquet"
       description: geoparquet describing aggregated nodes (Points).
     pipelines:
-      default: "<results>/{shapes}/pipelines.parquet"
+      default: "<results>/{shapes}/{scenario}/pipelines.parquet"
       description: geoparquet describing aggregated pipeline capacity on an LHV basis (LineStrings).
     gas_storage:
-      default: "<results>/{shapes}/gas_storage.parquet"
+      default: "<results>/{shapes}/{scenario}/gas_storage.parquet"
       description: existing working and cushion gas storage capacity per shape on an LHV basis.
     salt_cavern_h2_potential:
-      default: "<results>/{shapes}/salt_cavern_h2_potential.parquet"
+      default: "<results>/{shapes}/{scenario}/salt_cavern_h2_potential.parquet"
       description: parquet file describing aggregated salt cavern storage capacity.
 wildcards:
   shapes: name of the provided shapefile case.
+  scenario: name of the configuration scenario.

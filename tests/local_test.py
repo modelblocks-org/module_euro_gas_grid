@@ -10,7 +10,7 @@ There are three degrees of testing:
 !!!!!!!!!!!!!!!!!!!!!!!!IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!
 - You normally want to run these tests one case at a time. E.g.:
 
-    `pytest tests/local_test.py::test_name[BALK]`
+    `pytest tests/local_test.py::test_full_run[BALK-default]`
 
 - Do not run this on Github's CI!
 """
@@ -27,15 +27,18 @@ TEST_PNG = [
 ]
 
 
-def build_request_all(shape: str):
+def build_request_all(shape: str, scenario: str):
     """Construct a request for the given categories."""
-    return " ".join([f"results/{shape}/{file}.png" for file in TEST_PNG])
+    return " ".join(
+        [f"results/{shape}/{scenario}/{file}.png" for file in TEST_PNG]
+    )
 
 
+@pytest.mark.parametrize("scenario", ["default", "alternative"])
 @pytest.mark.parametrize("shape", ["BALK", "BENLDE", "euro34"])
-def test_full_run(user_path: Path, shape: str):
+def test_full_run(user_path: Path, shape: str, scenario: str):
     """Test a full request of module outputs (using images as proxy)."""
-    request = build_request_all(shape)
+    request = build_request_all(shape, scenario)
 
     assert subprocess.run(
         f"snakemake --use-conda --cores 4 --forceall --rerun-incomplete {request}",
@@ -44,13 +47,13 @@ def test_full_run(user_path: Path, shape: str):
         cwd=user_path.parent.parent,
     )
     assert subprocess.run(
-        f"snakemake --use-conda --cores 4 {request} --report results/{shape}/report.html",
+        f"snakemake --use-conda --cores 4 {request} --report results/{shape}/{scenario}/report.html",
         shell=True,
         check=True,
         cwd=user_path.parent.parent,
     )
     assert subprocess.run(
-        f"snakemake --use-conda --cores 4 {request} --rulegraph | dot -Tpng > results/{shape}/rulegraph.png",
+        f"snakemake --use-conda --cores 4 {request} --rulegraph | dot -Tpng > results/{shape}/{scenario}/rulegraph.png",
         shell=True,
         check=True,
         cwd=user_path.parent.parent,

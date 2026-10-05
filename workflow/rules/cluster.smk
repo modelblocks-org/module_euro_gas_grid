@@ -11,19 +11,21 @@ rule cluster_gas_network:
         pipelines="<pipelines>",
         nodes="<nodes>",
         fig=report(
-            "<results>/{shapes}/pipelines.png",
+            "<results>/{shapes}/{scenario}/pipelines.png",
             caption="../report/cluster_gas_network.rst",
-            category="Euro gas grid module",
+            category="European Gas Grid",
         ),
     log:
-        "<logs>/{shapes}/cluster_gas_network.log",
+        "<logs>/{shapes}/{scenario}/cluster_gas_network.log",
     conda:
         "../envs/module.yaml"
     params:
-        projected_crs=config["crs"]["projected"],
-        replace_sovereign=config["clustering"]["pipelines"].get("replace_sovereign", {}),
+        projected_crs=lambda wc: scenario_config(wc)["crs"]["projected"],
+        replace_sovereign=lambda wc: scenario_config(wc)["clustering"][
+            "pipelines"
+        ].get("replace_sovereign_id", {}),
     message:
-        "Clustering and sectioning existing gas grid to {wildcards.shapes}."
+        "Clustering and sectioning existing gas grid to {wildcards.shapes} for scenario {wildcards.scenario}."
     script:
         "../scripts/cluster_gas_network.py"
 
@@ -35,19 +37,21 @@ rule cluster_salt_cavern_h2_potential:
     output:
         salt_cavern_h2_potential="<salt_cavern_h2_potential>",
         fig=report(
-            "<results>/{shapes}/salt_cavern_h2_potential.png",
+            "<results>/{shapes}/{scenario}/salt_cavern_h2_potential.png",
             caption="../report/cluster_salt_cavern_h2_potential.rst",
-            category="Euro gas grid module",
+            category="European Gas Grid",
         ),
     log:
-        "<logs>/{shapes}/cluster_salt_cavern_h2_potential.log",
+        "<logs>/{shapes}/{scenario}/cluster_salt_cavern_h2_potential.log",
     conda:
         "../envs/module.yaml"
     params:
-        projected_crs=config["crs"]["projected"],
-        min_gwh_tolerance=config["clustering"]["salt_caverns"]["min_gwh"],
+        projected_crs=lambda wc: scenario_config(wc)["crs"]["projected"],
+        min_gwh_tolerance=lambda wc: scenario_config(wc)["clustering"]["salt_caverns"][
+            "min_gwh"
+        ],
     message:
-        "Clustering of salt cavern H2 storage to {wildcards.shapes}."
+        "Clustering salt cavern H2 storage to {wildcards.shapes} for scenario {wildcards.scenario}."
     script:
         "../scripts/cluster_salt_cavern_h2_potential.py"
 
@@ -59,18 +63,20 @@ rule cluster_gas_storage:
     output:
         capacities="<gas_storage>",
         fig=report(
-            "<results>/{shapes}/gas_storage.png",
+            "<results>/{shapes}/{scenario}/gas_storage.png",
             caption="../report/cluster_gas_storage.rst",
-            category="Euro gas grid module",
+            category="European Gas Grid",
         ),
     log:
-        "<logs>/{shapes}/cluster_gas_storage.log",
+        "<logs>/{shapes}/{scenario}/cluster_gas_storage.log",
     conda:
         "../envs/module.yaml"
     params:
-        projected_crs=config["crs"]["projected"],
-        snap_storage_ids=config["clustering"]["gas_storage"]["snap_to_nearest_shape"],
+        projected_crs=lambda wc: scenario_config(wc)["crs"]["projected"],
+        snap_storage_ids=lambda wc: scenario_config(wc)["clustering"]["gas_storage"][
+            "snap_storage_id_to_nearest_shape"
+        ],
     message:
-        "Clustering existing gas storage to {wildcards.shapes}."
+        "Clustering existing gas storage to {wildcards.shapes} for scenario {wildcards.scenario}."
     script:
         "../scripts/cluster_gas_storage.py"

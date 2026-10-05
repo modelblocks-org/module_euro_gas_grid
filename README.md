@@ -57,7 +57,7 @@ Please consult the configuration [README](./config/README.md) and the [configura
 
 As input, all you need to provide is a Geoparquet file with the polygons (i.e., 'shapes') to aggregate capacities into. This file should follow the schema provided by the [geo-boundaries module](https://github.com/modelblocks-org/module_geo_boundaries/).
 
-Outputs for each processed input shapes file are:
+Outputs for each processed input shapes file and configured scenario are:
 - For the gas network, files describing the network topology in the form of hubs, nodes, and pipelines (edges).
 - For existing gas storage, a separate file describing working and cushion gas capacity per region.
 - For salt caverns, a file describing the storage potential of each region.
