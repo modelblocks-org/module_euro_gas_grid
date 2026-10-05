@@ -146,9 +146,9 @@ def main():
     potential.to_parquet(snakemake.output.salt_cavern_h2_potential)
 
     fig, _ = plot(shapes, potential, caverns)
-    fig.savefig(snakemake.output.fig, dpi=300)
+    fig.savefig(snakemake.output.fig, dpi=300, bbox_inches="tight")
 
 
 if __name__ == "__main__":
-    sys.stderr = open(snakemake.log[0], "w")
+    sys.stderr = open(snakemake.log[0], "w", buffering=1)
     main()

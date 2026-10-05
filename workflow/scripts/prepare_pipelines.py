@@ -24,9 +24,6 @@ from shapely.geometry import Point
 if TYPE_CHECKING:
     snakemake: Any
 
-NG_LHV_KWH_PER_M3 = 10.5
-NG_LHV_MJ_PER_M3 = NG_LHV_KWH_PER_M3 * 3.6  # 37.8 MJ/m3
-
 
 def _line_midpoint_safe(geom):
     """Fallback function to get the midpoint in the line."""
@@ -150,9 +147,6 @@ def match_pipes_to_nodes(
             f"Dropped {len(drop_ids)} pipeline(s) due to missing start/end node after pivot."
         )
 
-    pipes["start_node_id"] = pipes["start_node_id"].astype(int)
-    pipes["end_node_id"] = pipes["end_node_id"].astype(int)
-
     # Drop: self-loops
     loops = pipes["start_node_id"].eq(pipes["end_node_id"])
     if loops.any():
@@ -178,7 +172,7 @@ def initialise_nodes(
     raw = _utils.to_crs(gpd.read_file(nodes_file).reset_index(drop=True), proj_crs)
     countries = _utils.to_crs(gpd.read_parquet(countries_file), proj_crs)
     nodes = gpd.GeoDataFrame(
-        {"node_id": raw.index.to_numpy(dtype=int), "geometry": raw["geometry"]},
+        {"node_id": raw["id"], "geometry": raw["geometry"]},
         geometry="geometry",
         crs=raw.crs,
     )
@@ -232,6 +226,7 @@ def initialise_pipelines(pipelines_file: str, crs: str) -> gpd.GeoDataFrame:
 
 def estimate_capacity(
     pipes: gpd.GeoDataFrame,
+    gas_kwh_per_m3_lhv: float,
     inferred_mm: float | None = None,
     *,
     recalculate_below_mw: float | None = None,
@@ -246,6 +241,8 @@ def estimate_capacity(
     Args:
         pipes (gpd.GeoDataFrame):
             pipelines dataframe.
+        gas_kwh_per_m3_lhv (float):
+            Natural gas lower heating value in kWh/m3.
         inferred_mm (float | None, optional):
             replaces Median inferred diameters. Defaults to None.
         recalculate_below_mw (float | None, optional):
@@ -262,10 +259,10 @@ def estimate_capacity(
     """
     pipes = pipes.copy()
 
-    conversion_factor = 1e6 * NG_LHV_MJ_PER_M3 / (24 * 60 * 60)
+    mcmd_to_mw = 1e3 * gas_kwh_per_m3_lhv / 24
 
     # Base estimate: convert reported capacity (million m3 / day) to MW
-    pipes["capacity_mw"] = pipes["max_cap_M_m3_per_d"] * conversion_factor
+    pipes["capacity_mw"] = pipes["max_cap_M_m3_per_d"] * mcmd_to_mw
 
     # Optionally override inferred diameters
     inferred_mask = pipes["diameter_method"].ne("raw")
@@ -440,6 +437,7 @@ def main():
     nodes = _utils.compute_node_graph_attributes(pipes, nodes)
     pipes = estimate_capacity(
         pipes,
+        gas_kwh_per_m3_lhv=snakemake.params.gas_kwh_per_m3_lhv,
         inferred_mm=imputation.get("inferred_mm", None),
         recalculate_below_mw=imputation.get("recalculate_below_mw", None),
         capacity_correction_threshold=imputation.get(
@@ -459,9 +457,9 @@ def main():
 
     # Analysis
     fig, _ = plot(pipes_out_file, nodes_out_file, countries_file, crs=proj_crs)
-    fig.savefig(snakemake.output.fig, dpi=300)
+    fig.savefig(snakemake.output.fig, dpi=300, bbox_inches="tight")
 
 
 if __name__ == "__main__":
-    sys.stderr = open(snakemake.log[0], "w")
+    sys.stderr = open(snakemake.log[0], "w", buffering=1)
     main()

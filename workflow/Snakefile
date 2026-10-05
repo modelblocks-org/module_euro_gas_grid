@@ -12,10 +12,11 @@ pathvars:
     # User resources
     user_shapes="<resources>/user/{shapes}/shapes.parquet",
     # Module results
-    hubs="<results>/{shapes}/hubs.parquet",
-    nodes="<results>/{shapes}/nodes.parquet",
-    pipelines="<results>/{shapes}/pipelines.parquet",
-    salt_cavern_h2_potential="<results>/{shapes}/salt_cavern_h2_potential.parquet",
+    hubs="<results>/{shapes}/{scenario}/hubs.parquet",
+    nodes="<results>/{shapes}/{scenario}/nodes.parquet",
+    pipelines="<results>/{shapes}/{scenario}/pipelines.parquet",
+    gas_storage="<results>/{shapes}/{scenario}/gas_storage.parquet",
+    salt_cavern_h2_potential="<results>/{shapes}/{scenario}/salt_cavern_h2_potential.parquet",
 
 
 # Load the example configuration. This will be overridden by users.
@@ -25,12 +26,32 @@ configfile: workflow.source_path("../config/config.yaml")
 # Validate the configuration using the schema file.
 validate(config, workflow.source_path("internal/config.schema.yaml"))
 
+
+wildcard_constraints:
+    scenario="|".join(config["scenarios"].keys()),
+    nat_earth="|".join(["countries"]),
+    scigrid_gas="|".join(
+        [
+            "BorderPoints",
+            "Compressors",
+            "Consumers",
+            "LNGs",
+            "Nodes",
+            "PipeSegments",
+            "PowerPlants",
+            "Productions",
+            "Storages",
+        ]
+    ),
+
+
 # Load internal settings separately so users cannot modify them.
 with open(workflow.source_path("internal/settings.yaml"), "r") as f:
     internal = yaml.safe_load(f)
 
 
 # Add all your includes here.
+include: "rules/_utils.smk"
 include: "rules/automatic.smk"
 include: "rules/prepare.smk"
 include: "rules/cluster.smk"

@@ -15,10 +15,11 @@ module module_euro_gas_grid:
         # Redirect specific user resources (inputs)
         user_shapes="resources/inputs/{shapes}/shapes.parquet",
         # Redirect specific module results (outputs)
-        hubs="results/outputs/{shapes}/hubs.parquet",
-        nodes="results/outputs/{shapes}/nodes.parquet",
-        pipelines="results/outputs/{shapes}/pipelines.parquet",
-        salt_cavern_h2_potential="results/outputs/{shapes}/salt_cavern_h2_potential.parquet",
+        hubs="results/outputs/{shapes}/{scenario}/hubs.parquet",
+        nodes="results/outputs/{shapes}/{scenario}/nodes.parquet",
+        pipelines="results/outputs/{shapes}/{scenario}/pipelines.parquet",
+        gas_storage="results/outputs/{shapes}/{scenario}/gas_storage.parquet",
+        salt_cavern_h2_potential="results/outputs/{shapes}/{scenario}/salt_cavern_h2_potential.parquet",
         # Redirect module intermediate files
         logs="resources/module/logs",
         resources="resources/module/resources",
@@ -33,7 +34,13 @@ module module_euro_gas_grid:
 use rule * from module_euro_gas_grid as module_euro_gas_grid_*
 
 
-FILES = ["hubs", "nodes", "pipelines", "salt_cavern_h2_potential"]
+FILES = [
+    "gas_storage",
+    "hubs",
+    "nodes",
+    "pipelines",
+    "salt_cavern_h2_potential",
+]
 
 
 # Request something from the module
@@ -41,7 +48,7 @@ rule all:
     default_target: True
     input:
         expand(
-            "results/outputs/BALK/{file}.parquet",
+            "results/outputs/BALK/default/{file}.parquet",
             file=FILES,
         ),
     message:

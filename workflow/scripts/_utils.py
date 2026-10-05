@@ -121,6 +121,7 @@ def match_points_to_polygons(
         predicate: Spatial predicate for matching:
             - "intersects": includes points on polygon boundaries
             - "within": point strictly inside polygon (boundary -> no match)
+            - "nearest": match the nearest polygon
 
     Returns:
         DataFrame with index matching `points.index` and columns `polygon_columns`.
@@ -133,23 +134,26 @@ def match_points_to_polygons(
         raise ValueError("points and polygons must share a CRS.")
 
     poly_cols = [columns] if isinstance(columns, str) else list(columns)
+    output = pd.DataFrame({column: pd.NA for column in poly_cols}, index=points.index)
 
-    output = pd.DataFrame({c: pd.NA for c in poly_cols}, index=points.index)
-
-    # relevant polygon attributes
     polys = polygons[poly_cols + ["geometry"]].copy()
     polys["_poly_area"] = polys.geometry.area
+    polys["_poly_order"] = range(len(polys))
 
-    candidates = gpd.sjoin(
-        points[["geometry"]], polys, how="inner", predicate=predicate
-    )
+    if predicate == "nearest":
+        candidates = gpd.sjoin_nearest(points[["geometry"]], polys, how="inner")
+    else:
+        candidates = gpd.sjoin(
+            points[["geometry"]], polys, how="inner", predicate=predicate
+        )
     if not candidates.empty:
         # smallest area wins: sort then keep first candidate per point index
-        candidates = candidates.sort_values("_poly_area", kind="mergesort")
+        candidates = candidates.sort_values(
+            ["_poly_area", "_poly_order"], kind="mergesort"
+        )
         best = candidates[~candidates.index.duplicated(keep="first")]
 
         output.loc[best.index, poly_cols] = best[poly_cols].to_numpy()
-
     return output
 
 
@@ -180,7 +184,6 @@ def build_nodes_from_pipelines(pipelines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
     nodes = pd.concat([start, end], ignore_index=True)
     nodes = nodes.dropna(subset=["node_id"]).copy()
-    nodes["node_id"] = nodes["node_id"].astype(int)
 
     # ensure a node_id never maps to multiple distinct coordinates
     wkb = nodes.geometry.to_wkb()

@@ -1,1 +1,1 @@
-Clustered gas network based on the {{ snakemake.wildcards.shapes }} shapes input.
+Clustered gas network based on SciGrid_gas data.

@@ -38,10 +38,10 @@ class PipelineSchema(pa.DataFrameModel):
     "Pipeline name."
     etype: Series[str] = pa.Field(eq="pipeline")
     "Element type."
-    start_node_id: Series[int] | None
-    "Node identifier for pipe start point."
-    end_node_id: Series[int] | None
-    "Node identifier for pipe end point."
+    start_node_id: Series[str] | None
+    "Raw SciGRID node identifier for the pipeline start point."
+    end_node_id: Series[str] | None
+    "Raw SciGRID node identifier for the pipeline end point."
     diameter_mm: Series[float] = pa.Field(gt=0)
     "Pipeline diameter."
     diameter_method: Series[str]
@@ -55,7 +55,7 @@ class PipelineSchema(pa.DataFrameModel):
     is_bidirectional: Series[bool]
     "Pipeline direction."
     capacity_mw: Series[float] = pa.Field(gt=0)
-    "Pipeline capacity in MW (nominal)."
+    "Pipeline capacity in MW on an LHV basis (nominal)."
     capacity_mw_method: Series[str]
     "Method used to calculate CH4 capacity."
     shape_id: Series[str] | None = pa.Field(nullable=True)
@@ -76,8 +76,8 @@ class NodeSchema(pa.DataFrameModel):
         coerce = True
         strict = "filter"
 
-    node_id: Series[int] = pa.Field(unique=True)
-    "Individual node ID."
+    node_id: Series[str] = pa.Field(unique=True)
+    "SciGRID node identifier."
     degree: Series[int] = pa.Field(gt=0)
     "Undirected graph degrees (i.e., number of connections)."
     in_degree: Series[int] = pa.Field(ge=0)
@@ -143,3 +143,44 @@ class H2Potential(pa.DataFrameModel):
     """Onshore salt cavern potential."""
     total_gwh: Series[float] = pa.Field(ge=0)
     """Aggregate salt cavern potential."""
+
+
+class GasStorageNodeSchema(pa.DataFrameModel):
+    """Internal point locations for existing gas storage."""
+
+    class Config:
+        coerce = True
+        strict = True
+
+    storage_id: Series[str] = pa.Field(unique=True)
+    """SciGrid_gas storage identifier."""
+    name: Series[str] = pa.Field(nullable=True)
+    """Facility name, if given."""
+    facility_type: Series[str] = pa.Field(eq="storage")
+    """Facility type."""
+    storage_working_gwh: Series[float] = pa.Field(gt=0)
+    """Usable working-gas energy capacity on an LHV basis."""
+    storage_cushion_gwh: Series[float] = pa.Field(gt=0, nullable=True)
+    """Cushion-gas energy capacity on an LHV basis."""
+    geometry: GeoSeries
+    """Facility point."""
+
+    @pa.check("geometry")
+    def check_geometries(cls, geom):
+        """Ensure geometries are points."""
+        return not {"Point"} ^ set(geom.geom_type.unique())
+
+
+class GasStorageSchema(pa.DataFrameModel):
+    """Shape-level existing gas storage capacities."""
+
+    class Config:
+        coerce = True
+        strict = True
+
+    shape_id: Series[str] = pa.Field(unique=True)
+    """User-provided shape identifier."""
+    storage_working_gwh: Series[float] = pa.Field(gt=0, nullable=True)
+    """Usable working-gas energy capacity on an LHV basis."""
+    storage_cushion_gwh: Series[float] = pa.Field(gt=0, nullable=True)
+    """Cushion-gas energy capacity on an LHV basis."""
