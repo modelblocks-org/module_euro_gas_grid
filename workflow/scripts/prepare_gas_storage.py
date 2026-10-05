@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 def prepare_gas_storage(raw_file: str, gas_kwh_per_m3_lhv: float) -> gpd.GeoDataFrame:
-    """Normalize SciGRID storage points with working- and cushion-gas volumes."""
+    """Normalize SciGRID storage points with working and cushion gas volumes."""
     raw = gpd.read_file(raw_file).reset_index(drop=True)
     params = pd.json_normalize(raw["param"])
     working_gas = params["max_workingGas_M_m3"]
@@ -24,7 +24,6 @@ def prepare_gas_storage(raw_file: str, gas_kwh_per_m3_lhv: float) -> gpd.GeoData
             "storage_id": source_id,
             "name": raw["name"],
             "facility_type": "storage",
-            # kWh/m³ and GWh/MCM have the same numerical conversion factor.
             "storage_working_gwh": working_gas * gas_kwh_per_m3_lhv,
             "storage_cushion_gwh": cushion_gas * gas_kwh_per_m3_lhv,
         },

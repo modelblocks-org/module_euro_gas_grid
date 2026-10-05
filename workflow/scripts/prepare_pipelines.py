@@ -242,7 +242,7 @@ def estimate_capacity(
         pipes (gpd.GeoDataFrame):
             pipelines dataframe.
         gas_kwh_per_m3_lhv (float):
-            Natural gas lower heating value in kWh/m³.
+            Natural gas lower heating value in kWh/m3.
         inferred_mm (float | None, optional):
             replaces Median inferred diameters. Defaults to None.
         recalculate_below_mw (float | None, optional):

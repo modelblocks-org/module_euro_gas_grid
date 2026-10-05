@@ -1,6 +1,8 @@
 """Assign and aggregate existing gas storage to user-provided shapes."""
 
+import logging
 import sys
+from collections.abc import Collection
 from typing import TYPE_CHECKING, Any
 
 import _plots
@@ -10,43 +12,68 @@ import cmap
 import geopandas as gpd
 import pandas as pd
 from matplotlib import pyplot as plt
-from matplotlib.colors import LogNorm
 from matplotlib.lines import Line2D
 
 if TYPE_CHECKING:
     snakemake: Any
 
+logger = logging.getLogger(__name__)
+
 MISSING_COLOR = "#f2f2f2"
 POINT_STYLE = {
-    False: ("s", "#fdd0a2", "Outside shapes"),
-    True: ("s", "#e6550d", "Inside shapes"),
+    False: ("s", "#fdd0a2", "Unassigned"),
+    True: ("s", "#e6550d", "Assigned"),
 }
 
 
-def assign_locations_to_shapes(
-    locations: gpd.GeoDataFrame, shapes: gpd.GeoDataFrame
+def snap_locations_to_nearest_shapes(
+    assigned: gpd.GeoDataFrame, shapes: gpd.GeoDataFrame, storage_ids: Collection[str]
 ) -> gpd.GeoDataFrame:
-    """Assign each storage point to at most one intersecting shape."""
-    locations = _utils.to_crs(locations, shapes.crs).reset_index(drop=True)
-    points = locations.copy()
-    points["_point_order"] = points.index
+    """Assign configured, unassigned storage locations to their nearest shape."""
+    storage_ids = set(storage_ids)
+    unknown_ids = sorted(storage_ids.difference(assigned["storage_id"]))
+    if unknown_ids:
+        raise ValueError(f"Unknown storage IDs configured for snapping: {unknown_ids}")
 
-    polygons = shapes[["shape_id", "country_id", "shape_class", "geometry"]].copy()
-    polygons["_shape_area"] = polygons.geometry.area
-    joined = gpd.sjoin(points, polygons, how="left", predicate="intersects")
-    joined = joined.sort_values(
-        ["_point_order", "_shape_area", "shape_id"],
-        kind="mergesort",
-        na_position="last",
-    ).drop_duplicates("_point_order", keep="first")
-    joined["selected"] = joined["shape_id"].notna()
-    return joined.drop(columns=["index_right", "_shape_area", "_point_order"])
+    snap_mask = assigned["shape_id"].isna() & assigned["storage_id"].isin(storage_ids)
+    if not snap_mask.any():
+        return assigned
+
+    shape_columns = ["shape_id", "country_id", "shape_class"]
+    nearest = _utils.match_points_to_polygons(
+        assigned.loc[snap_mask], shapes, shape_columns, predicate="nearest"
+    )
+    assigned.loc[snap_mask, shape_columns] = nearest[shape_columns]
+
+    snapped = assigned.loc[snap_mask, ["storage_id"]].join(nearest[["shape_id"]])
+    for storage_id, shape_id in snapped.dropna(subset=["shape_id"]).itertuples(
+        index=False, name=None
+    ):
+        logger.info("Snapped storage_id=%s to shape_id=%s.", storage_id, shape_id)
+
+    return assigned
+
+
+def assign_locations_to_shapes(
+    locations: gpd.GeoDataFrame,
+    shapes: gpd.GeoDataFrame,
+    snap_storage_ids: Collection[str] = (),
+) -> gpd.GeoDataFrame:
+    """Assign storage points to intersecting shapes, with opt-in nearest snapping."""
+    locations = _utils.to_crs(locations, shapes.crs).reset_index(drop=True)
+    shape_columns = ["shape_id", "country_id", "shape_class"]
+    assigned = locations.join(
+        _utils.match_points_to_polygons(locations, shapes, shape_columns)
+    )
+    assigned = snap_locations_to_nearest_shapes(assigned, shapes, snap_storage_ids)
+    assigned["selected"] = assigned["shape_id"].notna()
+    return assigned
 
 
 def aggregate_storage(
     assigned: gpd.GeoDataFrame, shapes: gpd.GeoDataFrame
 ) -> pd.DataFrame:
-    """Aggregate working- and cushion-gas energy capacity to every shape."""
+    """Aggregate working and cushion gas energy capacity to every shape."""
     grouped = (
         assigned.loc[assigned["selected"]]
         .groupby("shape_id")[["storage_working_gwh", "storage_cushion_gwh"]]
@@ -58,12 +85,11 @@ def aggregate_storage(
     return _schemas.GasStorageSchema.validate(output)
 
 
-# FIXME: points 'outside' should be above inside points to help users catch missed storages
 def plot(
     assigned: gpd.GeoDataFrame, capacities: pd.DataFrame, shapes: gpd.GeoDataFrame
 ):
-    """Plot locations, working gas, and working gas relative to cushion gas."""
-    fig, axs = plt.subplots(1, 3, figsize=(21, 7), layout="compressed")
+    """Plot storage locations and working gas capacity."""
+    fig, axs = plt.subplots(1, 2, figsize=(10, 5), layout="compressed")
     xlim, ylim = _plots.get_padded_bounds(shapes, pad_frac=0.02)
     visible = assigned.cx[xlim[0] : xlim[1], ylim[0] : ylim[1]]
 
@@ -79,7 +105,7 @@ def plot(
                 markersize=18,
                 edgecolor="black",
                 linewidth=0.25,
-                zorder=2 if selected else 1,
+                zorder=1 if selected else 2,
             )
 
     handles = [
@@ -102,42 +128,19 @@ def plot(
     clustered = shapes[["shape_id", "geometry"]].merge(
         capacities, on="shape_id", how="left"
     )
-    clustered["working_to_cushion_ratio"] = (
-        clustered["storage_working_gwh"] / clustered["storage_cushion_gwh"]
-    )
-
-    plot_columns = [
-        ("storage_working_gwh", "Working gas ($GWh$)"),
-        ("working_to_cushion_ratio", "Working / cushion gas ratio"),
-    ]
-    for ax, (column, title) in zip(axs[1:], plot_columns, strict=True):
-        if clustered[column].notna().any():
-            plot_kwargs = {}
-            legend_kwds = {}
-            if column == "working_to_cushion_ratio":
-                values = clustered[column].dropna()
-                ratio_extent = max(values.max(), 1.0 / values.min())
-                ratio_extent = max(ratio_extent, 1.0 + 1e-9)
-                plot_kwargs = {
-                    "cmap": cmap.Colormap("colorbrewer:RdYlBu").to_mpl(),
-                    "norm": LogNorm(vmin=1.0 / ratio_extent, vmax=ratio_extent),
-                }
-                legend_kwds = {"format": "%.1f"}
-            else:
-                plot_kwargs = {"cmap": cmap.Colormap("bids:fake_parula").to_mpl()}
-            clustered.plot(
-                ax=ax,
-                column=column,
-                legend=True,
-                legend_kwds=legend_kwds,
-                lw=0,
-                missing_kwds={"color": MISSING_COLOR},
-                **plot_kwargs,
-            )
-        else:
-            clustered.plot(ax=ax, color=MISSING_COLOR, lw=0)
-        clustered.boundary.plot(ax=ax, color="black", lw=0.5)
-        _plots.style_map_plot(ax, title, xlim, ylim)
+    if clustered["storage_working_gwh"].notna().any():
+        clustered.plot(
+            ax=axs[1],
+            column="storage_working_gwh",
+            legend=True,
+            cmap=cmap.Colormap("bids:fake_parula").to_mpl(),
+            lw=0,
+            missing_kwds={"color": MISSING_COLOR},
+        )
+    else:
+        clustered.plot(ax=axs[1], color=MISSING_COLOR, lw=0)
+    clustered.boundary.plot(ax=axs[1], color="black", lw=0.5)
+    _plots.style_map_plot(axs[1], "Working gas ($GWh$)", xlim, ylim)
     return fig, axs
 
 
@@ -151,7 +154,9 @@ def main():
     locations = _utils.to_crs(
         gpd.read_parquet(snakemake.input.locations), projected_crs
     )
-    assigned = assign_locations_to_shapes(locations, shapes)
+    assigned = assign_locations_to_shapes(
+        locations, shapes, snakemake.params.snap_storage_ids
+    )
     capacities = aggregate_storage(assigned, shapes)
 
     capacities.to_parquet(snakemake.output.capacities)
@@ -161,4 +166,5 @@ def main():
 
 if __name__ == "__main__":
     sys.stderr = open(snakemake.log[0], "w", buffering=1)
+    logging.basicConfig(level=logging.INFO)
     main()

@@ -59,7 +59,7 @@ As input, all you need to provide is a Geoparquet file with the polygons (i.e., 
 
 Outputs for each processed input shapes file are:
 - For the gas network, files describing the network topology in the form of hubs, nodes, and pipelines (edges).
-- For existing gas storage, a separate file describing working- and cushion-gas capacity per region.
+- For existing gas storage, a separate file describing working and cushion gas capacity per region.
 - For salt caverns, a file describing the storage potential of each region.
 
 Please consult the [interface file](./INTERFACE.yaml) for more information.

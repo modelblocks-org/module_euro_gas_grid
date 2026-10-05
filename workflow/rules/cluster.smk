@@ -69,6 +69,7 @@ rule cluster_gas_storage:
         "../envs/module.yaml"
     params:
         projected_crs=config["crs"]["projected"],
+        snap_storage_ids=config["clustering"]["gas_storage"]["snap_to_nearest_shape"],
     message:
         "Clustering existing gas storage to {wildcards.shapes}."
     script:

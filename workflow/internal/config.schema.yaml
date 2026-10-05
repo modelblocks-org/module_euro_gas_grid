@@ -24,8 +24,24 @@ properties:
     description: Options to 'tweak' aggregation into the provided shapes.
     type: object
     additionalProperties: false
-    required: [pipelines, salt_caverns]
+    required: [gas_storage, pipelines, salt_caverns]
     properties:
+      gas_storage:
+        description: Options affecting existing gas storage.
+        type: object
+        additionalProperties: false
+        required: [snap_to_nearest_shape]
+        properties:
+          snap_to_nearest_shape:
+            description: |
+              Storage IDs to assign to their nearest shape when they do not
+              intersect any provided shape. Unlisted storage remains unassigned.
+            type: array
+            default: []
+            uniqueItems: true
+            items:
+              type: string
+
       pipelines:
         description: Options affecting pipelines.
         type: object

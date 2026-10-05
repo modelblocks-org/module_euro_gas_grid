@@ -3,6 +3,9 @@ crs:
   projected: "EPSG:3857"
 
 clustering:
+  gas_storage:
+    # Storage IDs outside the shapes that should be assigned to their nearest shape.
+    snap_to_nearest_shape: [INET_SR_108]
   pipelines:
     replace_sovereign:
       NL1: NLD
