@@ -556,7 +556,7 @@ def main():
     agg_nodes.to_parquet(snakemake.output.nodes)
     agg_pipes.to_parquet(snakemake.output.pipelines)
     hubs.to_parquet(snakemake.output.hubs)
-    fig.savefig(snakemake.output.fig, dpi=300)
+    fig.savefig(snakemake.output.fig, dpi=300, bbox_inches="tight")
 
 
 if __name__ == "__main__":

@@ -457,7 +457,7 @@ def main():
 
     # Analysis
     fig, _ = plot(pipes_out_file, nodes_out_file, countries_file, crs=proj_crs)
-    fig.savefig(snakemake.output.fig, dpi=300)
+    fig.savefig(snakemake.output.fig, dpi=300, bbox_inches="tight")
 
 
 if __name__ == "__main__":

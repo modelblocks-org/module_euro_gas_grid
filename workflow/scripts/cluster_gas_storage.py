@@ -161,7 +161,7 @@ def main():
 
     capacities.to_parquet(snakemake.output.capacities)
     fig, _ = plot(assigned, capacities, shapes)
-    fig.savefig(snakemake.output.fig, dpi=300)
+    fig.savefig(snakemake.output.fig, dpi=300, bbox_inches="tight")
 
 
 if __name__ == "__main__":

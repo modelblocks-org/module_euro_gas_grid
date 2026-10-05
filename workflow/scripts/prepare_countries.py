@@ -20,7 +20,7 @@ def plot(land_file: str, output_file: str):
 
     countries.plot(ax=ax, color="tab:purple")
     _plots.style_map_plot(ax, "Natural Earth countries")
-    fig.savefig(output_file, dpi=300)
+    fig.savefig(output_file, dpi=300, bbox_inches="tight")
 
 
 def prepare_countries(raw_file: str, output_file: str):
